@@ -1,0 +1,198 @@
+---
+title: "Read Txdot Collision Data"
+author: "Alan Jackson"
+date: "February 26, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(lubridate)
+
+#   Crash Severity ID table
+Severity <- c(
+"0",	"UNKNOWN", 
+"1",	"SUSPECTED SERIOUS INJURY",
+"2",	"NON-INCAPACITATING",
+"3",	"POSSIBLE INJURY",
+"4",	"FATAL",
+"5",	"NOT INJURED",
+"94",	"REPORTED INVALID",
+"95",	"NOT REPORTED"
+)
+Severity <- cbind.data.frame(split(Severity, rep(1:2, times=length(Severity)/2)), stringsAsFactors=F)
+names(Severity) <- c("Crash_Sev_ID", "Severity")
+Severity$Crash_Sev_ID <- as.integer(Severity$Crash_Sev_ID)
+
+City <- c(
+ "29", "Baytown",
+ "30", "Beaumont",
+ "33", "Bellaire",
+ "57", "Bunker Hill Village",
+ "111", "Deer Park",
+ "135", "El Lago",
+ "160", "Friendswood",
+ "164", "Galena Park",
+ "208", "Houston",
+ "211", "Humble",
+ "212", "Hunters Creek Village",
+ "219", "Jacinto City",
+ "223", "Jersey Village",
+ "228", "Katy",
+"244", "La Porte",
+"255", "League City",
+"260", "Liberty",
+"296", "Missouri City",
+"304", "Nassau Bay",
+"325", "Pasadena",
+"326", "Pearland",
+"333", "Piney Point Village",
+"359", "Richmond",
+"383", "San Marcos",
+"391", "Seabrook",
+"405", "South Houston",
+"408", "Spring Valley",
+"409", "Stafford",
+"422", "Taylor Lake Village",
+"430", "Tomball",
+"434", "Tyler",
+"447", "Webster",
+"453", "West University Place",
+"478", "Aldine",
+"625", "Channelview",
+"647", "Cloverleaf",
+"672", "Crosby",
+"843", "Hedwig Village",
+"851", "Highlands",
+"855", "Hilshire Village",
+"1061", "Mission Bend",
+"1073", "Morgans Point",
+"1326", "Shoreacres",
+"1348", "Southside Place",
+"1353", "Spring",
+"1444", "Waller",
+"1535", "Kingwood",
+"1585", "Rural Brazoria County",
+"1601", "Rural Chambers County",
+"1644", "Rural Fort Bend County",
+"1649", "Rural Galveston County",
+"1665", "Rural Hardin County",
+"1666", "Rural Harris County",
+"1667", "Rural Harrison County",
+"1668", "Rural Hartley County",
+"1678", "Rural Houston County",
+"1711", "Rural Liberty County",
+"1719", "Rural Madison County",
+"1735", "Rural Montgomery County",
+"1926", "Alief",
+"2071", "Atascosita",
+"3313", "Cypress",
+"4728", "Huffman",
+"5659", "Meadows Place",
+"6756", "Porter"
+)
+City <- cbind.data.frame(split(City, rep(1:2, times=length(City)/2)), stringsAsFactors=F)
+names(City) <- c("Rpt_City_ID", "City")
+City$Rpt_City_ID <- as.integer(City$Rpt_City_ID)
+
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+```{r Read files}
+filenames <- list.files(path = "~/Rprojects/Collisions/TrafficAccidents", pattern="*csv$")
+
+filenames <- paste("TrafficAccidents/",filenames, sep="")
+
+DF <- read.csv(filenames[1], stringsAsFactors = FALSE)
+
+for (i in filenames[-1]) {
+  df <- read.csv(i, stringsAsFactors = FALSE)
+  DF <- rbind(DF, df)
+}
+
+df <- DF %>% select(Crash_Fatal_Fl, Crash_Date,	Crash_Time, Rpt_City_ID, Rpt_Block_Num, Rpt_Street_Pfx,	Rpt_Street_Name, Rpt_Street_Sfx, At_Intrsct_Fl, Latitude, Longitude, Street_Name, Street_Nbr, Tot_Injry_Cnt, Death_Cnt, Crash_Sev_ID)
+
+df <- left_join(df, City, by="Rpt_City_ID")
+df <- left_join(df, Severity, by="Crash_Sev_ID")
+
+
+
+```
+
+
+Do some quality control checks
+
+
+```{r Look for nulls}
+
+# Look for NA's in the various fields
+
+df %>%
+    map_df(function(x) sum(is.na(x))) %>%
+    gather(feature, num_nulls) %>%
+    print(n = 100)
+
+```
+
+```{r Look at Crash_Fatal_Fl}
+
+sort(unique(df$Crash_Fatal_Fl))
+
+```
+
+```{r Look at Crash_Date}
+
+sort(unique(df$Crash_Date))
+
+#  make it a date
+
+df$Crash_Date <- mdy(df$Crash_Date)
+
+```
+
+```{r Look at Crash_Time}
+
+sort(unique(df$Crash_Time))
+
+#   make it a time
+
+df$Crash_Time <- ymd_hm(paste("2000/1/1",df$Crash_Time))
+
+```
+
+```{r Look at City ID}
+
+sort(unique(df$Rpt_City_ID))
+
+```
+
+```{r Look at Rpt_Blk_Num}
+
+sort(unique(df$Rpt_Block_Num))
+
+df$Rpt_Block_Num[grepl("\\D+", df$Rpt_Block_Num)]
+
+#   Remove non-numeric stuff
+
+df$Rpt_Block_Num <- str_replace(df$Rpt_Block_Num, " BLOCK","")
+df$Rpt_Block_Num <- str_replace_all(df$Rpt_Block_Num, "O","0")
+df$Rpt_Block_Num <- str_replace_all(df$Rpt_Block_Num, "^\\d+-","")
+df$Rpt_Block_Num <- str_replace_all(df$Rpt_Block_Num, "PP","00")
+df$Rpt_Block_Num <- str_replace_all(df$Rpt_Block_Num, " 1/2","")
+df$Rpt_Block_Num <- str_replace(df$Rpt_Block_Num, "\\D+","")
+
+```
+
+```{r Look at Rpr_Street_Pfx}
+
+sort(unique(df$Rpt_Street_Pfx))
+
+```
+```{r Look at Rpt_Street_Sfx}
+
+sort(unique(df$Rpt_Street_Sfx))
+
+```
+

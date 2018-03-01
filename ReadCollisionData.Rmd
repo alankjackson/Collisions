@@ -24,6 +24,8 @@ Severity <- cbind.data.frame(split(Severity, rep(1:2, times=length(Severity)/2))
 names(Severity) <- c("Crash_Sev_ID", "Severity")
 Severity$Crash_Sev_ID <- as.integer(Severity$Crash_Sev_ID)
 
+HarrisBoundary <- c(-95.990842, 29.499559, -94.852384, 30.180927)
+
 City <- c(
  "29", "Baytown",
  "30", "Beaumont",
@@ -150,6 +152,8 @@ sort(unique(df$Crash_Date))
 
 df$Crash_Date <- mdy(df$Crash_Date)
 
+range(df$Crash_Date)
+
 ```
 
 ```{r Look at Crash_Time}
@@ -159,6 +163,7 @@ sort(unique(df$Crash_Time))
 #   make it a time
 
 df$Crash_Time <- ymd_hm(paste("2000/1/1",df$Crash_Time))
+sort(unique(hour(df$Crash_Time)))
 
 ```
 
@@ -182,6 +187,7 @@ df$Rpt_Block_Num <- str_replace_all(df$Rpt_Block_Num, "^\\d+-","")
 df$Rpt_Block_Num <- str_replace_all(df$Rpt_Block_Num, "PP","00")
 df$Rpt_Block_Num <- str_replace_all(df$Rpt_Block_Num, " 1/2","")
 df$Rpt_Block_Num <- str_replace(df$Rpt_Block_Num, "\\D+","")
+df$Rpt_Block_Num <- str_replace(df$Rpt_Block_Num, "0RE","")
 
 ```
 
@@ -193,6 +199,44 @@ sort(unique(df$Rpt_Street_Pfx))
 ```{r Look at Rpt_Street_Sfx}
 
 sort(unique(df$Rpt_Street_Sfx))
+
+```
+
+```{r Look at Latitude and Longitude}
+
+df$Latitude[grepl("[^0-9\\-\\. ]", df$Latitude)]
+df$Longitude[grepl("[^-][^0-9\\. ]", df$Longitude)]
+df$Latitude <- as.numeric(df$Latitude)
+df$Longitude <- as.numeric(df$Longitude)
+range(df$Latitude, na.rm=TRUE)
+range(df$Longitude, na.rm = TRUE)
+
+```
+```{r Look at Street_Nbr}
+
+sort(unique(df$Street_Nbr))
+df$Street_Nbr[grepl("\\D+", df$Street_Nbr)]
+df$Street_Nbr <- str_replace(df$Street_Nbr, "\\D+","")
+
+```
+```{r Look at Tot_Injry_Cnt}
+
+sort(unique(df$Tot_Injry_Cnt))
+
+```
+```{r Look at Death_Cnt}
+
+sort(unique(df$Death_Cnt))
+
+```
+
+```{r Look at Severity}
+
+sort(unique(df$Severity))
+
+df %>% group_by(Severity) %>% 
+  summarise(count=n()) %>%
+  arrange(count)
 
 ```
 

@@ -239,4 +239,21 @@ df %>% group_by(Severity) %>%
   arrange(count)
 
 ```
+```{r Look at Rpt_Street_Name}
+
+sort(unique(df$Rpt_Street_Name))
+```
+
+```{r Look at Street_Name}
+
+sort(unique((df$Street_Name)))
+
+```
+
+#     Add neighborhood and zipcode designations to records
+
+```{r Add neighborhood and zipcode}
+
+```
+
 

@@ -8,6 +8,9 @@ output: html_document
 ```{r setup, include=FALSE}
 library(tidyverse)
 library(lubridate)
+library(sf)
+
+googlecrs <- 4326
 
 #   Crash Severity ID table
 Severity <- c(
@@ -248,11 +251,45 @@ sort(unique(df$Rpt_Street_Name))
 
 sort(unique((df$Street_Name)))
 
+keepdf <-  df
 ```
 
 #     Add neighborhood and zipcode designations to records
 
 ```{r Add neighborhood and zipcode}
+####   mask out rows with bad coordinates
+maskcoord <- !(is.na(df$Latitude) | is.na(df$Longitude))
+#  Create a temporary sf data frame for doing the intersects
+# set longitudes as the first column and latitudes as the second
+dat <- data.frame(Longitude=df$Longitude[maskcoord], Latitude=df$Latitude[maskcoord], stringsAsFactors = FALSE)
+
+dat <- st_as_sf(dat, coords=c("Longitude", "Latitude"), crs=googlecrs, agr = "identity")
+# read in neighborhood and zipcode polygons
+neighborhoods <- readRDS("~/Dropbox/CrimeStats/NeighborhoodPolys.rds")
+zipcodes <- readRDS("~/Dropbox/CrimeStats/ZipCodes.rds")
+
+# st_intersects to see if points are inside poly
+#  This is a matrix of T/F values, npoints x npolys in size
+#  if a point is in multiple polys it will show up here
+a <- st_intersects(dat, neighborhoods, sparse = FALSE)
+max(rowSums(a)) # this is the maximum number of polys for some point
+hist(rowSums(a))# just curious how they are distributed.
+#   collect all the neighborhoods a point falls into, separate by
+#   commas, and put into the Nbhd field
+diddle <- function (i) {paste(neighborhoods$Name[i], collapse=', ')}
+df$Nbhd[maskcoord] <-  apply(a,1,diddle)  #  work on "a" row-wise
+
+######################################
+#########   add zipcode
+######################################
+#   find points in polygons
+#   since zipcodes don't overlap, let's just grab the array index
+#   instead of creating a huge matrix
+a <- st_intersects(dat, zipcodes, sparse = TRUE)
+
+#   Append the ZIP field to the data frame
+df$Zip_Code[maskcoord] <- zipcodes$Zip_Code[unlist(a)]
+
 
 ```
 

@@ -1,0 +1,97 @@
+---
+title: "MapCollisions"
+author: "Alan Jackson"
+date: "March 3, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+
+library(ggplot2)
+library(dplyr)
+library(ggmap)
+library(sf)
+
+neighborhoods <- readRDS("~/Dropbox/CrimeStats/NeighborhoodPolys.rds")
+zipcodes <- readRDS("~/Dropbox/CrimeStats/ZipCodes.rds")
+collisions <- readRDS("~/Rprojects/Collisions/Collisions_2010_2017.rds")
+
+#   What area will be mapped? a zipcode, neighboprhood, or county?
+#   This will determine the map center coordinate and the zoom level
+
+############################################################
+areatype <- "neighborhood"  # zip, neighborhood, county
+areavalue <- "Greater Heights (SN 15)"
+############################################################
+
+if (areatype == "zip") {
+  zoom <- 13
+  center <- st_geometry(st_centroid(zipcodes[zipcodes$Zip_Code == areavalue, ]))[[1]][1:2]
+} else if (areatype == "neighborhood") {
+zoom <- 14
+  center <- st_geometry(st_centroid(neighborhoods[neighborhoods$Name == areavalue, ]))[[1]][1:2]
+center <- st_centroid((neighborhoods[neighborhoods$Name == areavalue, ]))
+} else if (areatype == "county") {
+  zoom <- 12
+  center <- c(-95.3923374942154, 29.8572783561949)
+} else { print("Bad areatype selected")
+          stop()}
+gmap = get_map(location=center, source="google", zoom=zoom)
+##gmap = get_map(location=center$Shape[[1]][1:2], source="google", zoom=zoom)
+#   osm doesn't work and bounding box doesn'r work in google
+##gmap = get_map(location=as.numeric(st_bbox(center)), source="osm", zoom=zoom)
+
+#ggmap(gmap, extent='normal', maprange=FALSE, show.legend=FALSE) +
+#   geom_sf(data=zipcodes[zipcodes$Zip_Code=="77008",], mapping=aes(Zip_Code="blue"),fill=NA, inherit.aes=FALSE, show.legend=FALSE)
+
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Let's first make a simple bubble map just for one zipcode
+Before we do that, let's look at how the lat longs are distributed.
+I may need to do some rounding to collect them together if they are
+near one anotehr (where near = 100 feet diameter = 1/2 short block)
+
+```{r bubble maps}
+
+#   First lets pull out only the data we need
+
+######    need to generalize this line
+temp <- collisions %>% filter(grepl("Greater Heights", Nbhd))
+
+#   0.000274961 degrees = 100 feet
+#temp$Latitude <- round(temp$Latitude, 4)
+#temp$Longitude <- round(temp$Longitude, 4)
+
+#   Need to make a lat/long hash as a key field to summarize on
+
+temp$hash <- paste(as.character(round(temp$Latitude,4)), as.character(round(temp$Longitude,4)), sep="/")
+
+
+
+pointdatasum <- temp %>%
+  group_by(hash) %>%
+  summarise(total=n()) %>%
+  filter(total>10)
+
+pointdatasum <- pointdatasum %>% 
+       mutate(Longitude=as.numeric(str_extract(pointdatasum$hash,"[-.0-9]*$")),
+              Latitude=as.numeric(str_extract(pointdatasum$hash,"^[.0-9]*")))
+
+#pointdatasum = left_join(pointdatasum,geotable, by="Address")
+#pointdatasum <- pointdatasum[complete.cases(pointdatasum),]
+#pointdatasum = distinct(pointdatasum)
+
+ggmap(gmap, extent='normal', maprange=FALSE, show.legend=FALSE) %+% pointdatasum + aes(x = Longitude, y = Latitude) +
+  geom_point(data=pointdatasum, aes(size=total,color=total)) +
+  scale_color_continuous(guide="colorbar") +
+  scale_alpha(range = c(0.00, 0.35), guide = FALSE) +
+  labs(title="Collisions 2010-2017") +
+  theme(legend.position = "right", axis.title = element_blank(), text = element_text(size = 12)) +
+  geom_sf(data=neighborhoods[neighborhoods$Name=="Greater Heights (SN 15)",], mapping=aes(Name="red"),fill=NA, inherit.aes=FALSE, show.legend=FALSE) +
+  coord_sf(xlim=c(-95.425, -95.37), ylim=c(29.775, 29.815))
+  #coord_map(projection="mercator", xlim=c(-95.42, -95.38), ylim=c(29.775, 29.815)) 
+
+
+```
+

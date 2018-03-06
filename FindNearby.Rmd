@@ -1,0 +1,42 @@
+---
+title: "FindNearby"
+author: "Alan Jackson"
+date: "March 5, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+
+library(dplyr)
+library(sf)
+
+collisions <- readRDS("~/Rprojects/Collisions/Collisions_2010_2017.rds")
+
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+``` {r }
+flat <- 29.790507
+flon <- -95.380846
+degradius <- 500*1./363688
+
+target <- data.frame(
+                 place=c("Pecore@Watson", "Watson@WhiteOak"),
+                 longitude=c(-95.380846,  -95.380602),
+                 latitude=c(29.790507, 29.779669))
+target <- st_as_sf(target, coords = c("longitude", "latitude"), 
+                 crs = googlecrs, agr = "constant")
+colldata <- collisions %>% filter(Zip_Code=="77009")
+
+colldata <- st_as_sf(colldata, coords = c("Longitude", "Latitude"), 
+                 crs = googlecrs, agr = "constant")
+targetbuf <- st_buffer(target, dist=degradius)
+
+inter <- st_intersects(targetbuf, colldata, sparse = FALSE)
+
+answer <- colldata[inter[1,],]
+answer <- as.data.frame(answer)
+print(paste(answer$Crash_Date, answer$Rpt_Block_Num, answer$Rpt_Street_Name, answer$Severity))
+
+
+```

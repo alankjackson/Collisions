@@ -50,7 +50,7 @@ knitr::opts_chunk$set(echo = TRUE)
 Let's first make a simple bubble map just for one zipcode
 Before we do that, let's look at how the lat longs are distributed.
 I may need to do some rounding to collect them together if they are
-near one anotehr (where near = 100 feet diameter = 1/2 short block)
+near one another (where near = 100 feet diameter = 1/2 short block)
 
 ```{r bubble maps}
 
@@ -92,6 +92,63 @@ ggmap(gmap, extent='normal', maprange=FALSE, show.legend=FALSE) %+% pointdatasum
   coord_sf(xlim=c(-95.425, -95.37), ylim=c(29.775, 29.815))
   #coord_map(projection="mercator", xlim=c(-95.42, -95.38), ylim=c(29.775, 29.815)) 
 
+
+```
+
+```{r  tests}
+#   can I calculate collisions per mile for each street?
+#     start by calcultaiung overall average of collisions per mile for
+#     each street - total collisions/total length. Use that to pick out the 
+#     worst ones
+library(RcppRoll)
+#   extract Yale street
+temp <- collisions %>% filter(grepl("YALE ST", Street_Name), !is.na(Latitude))
+#   create latlong has for grouping
+temp$hash <- paste(as.character(round(temp$Latitude,4)), as.character(round(temp$Longitude,4)), sep="/")
+
+#   summarize by location
+pointdatasum <- temp %>%
+  group_by(hash) %>%
+  summarise(total=n(), Latitude=first(Latitude), Longitude=first(Longitude)) 
+
+#   sort by choice of lat or long
+latdiff <- max(temp$Latitude) - min(temp$Latitude)
+londiff <- max(temp$Longitude) - min(temp$Longitude)
+if (latdiff>londiff) {
+  pointdatasum <- pointdatasum %>% arrange(Latitude)
+} else {
+  pointdatasum <- pointdatasum %>% arrange(Longitude)
+}
+
+#   calculate linear distance in miles between adjacent points
+#   0.000274961 degrees = 100 feet
+degmi <- 1./(52.8*0.000274961) # miles per degree
+d <- sqrt(diff(pointdatasum$Latitude)**2 + diff(pointdatasum$Longitude)**2) * degmi
+d <- append(d, 0, after=0)
+
+street <- pointdatasum
+street$dist <- d
+street <- street %>% filter(Latitude<29.8545)
+#   running windowed sum along sorted array
+#   First regularize the data to a distance of 100 feet
+numpts <- as.integer(sum(street$dist)*5280/100)+1
+xout <- (0:numpts)*10/528
+dint <- cumsum(round(street$dist/(sum(street$dist)/numpts)))+1
+totreg <- rep(0., numpts)  # set up regularized vector
+totreg[dint] <- street$total
+gate <- 50
+totregf <- roll_sum(totreg, n=gate)
+totregdf <- data.frame(dist=xout[(gate/2+1):(numpts-gate/2+1)], total=totregf)
+ggplot(totregdf) +
+  geom_point(aes(x=dist, y=total)) +
+  geom_line(aes(x=dist, y=total))
+
+street$dint <- dint
+#   plot
+
+ggplot(street) +
+  geom_point(aes(y=dist, x=Latitude)) +
+  geom_line(aes(y=dist, x=Latitude)) 
 
 ```
 

@@ -117,7 +117,7 @@ for (i in filenames[-1]) {
   DF <- rbind(DF, df)
 }
 
-df <- DF %>% select(Crash_Fatal_Fl, Crash_Date,	Crash_Time, Rpt_City_ID, Rpt_Block_Num, Rpt_Street_Pfx,	Rpt_Street_Name, Rpt_Street_Sfx, At_Intrsct_Fl, Latitude, Longitude, Street_Name, Street_Nbr, Tot_Injry_Cnt, Death_Cnt, Crash_Sev_ID)
+df <- DF %>% select(Crash_Fatal_Fl, Crash_Date,	Crash_Time, Rpt_City_ID, Rpt_Block_Num, Rpt_Street_Pfx,	Rpt_Street_Name, Rpt_Street_Sfx, At_Intrsct_Fl, Latitude, Longitude, Street_Name, Street_Nbr, Tot_Injry_Cnt, Death_Cnt, Crash_Sev_ID, Crash_Speed_Limit)
 
 df <- left_join(df, City, by="Rpt_City_ID")
 df <- left_join(df, Severity, by="Crash_Sev_ID")

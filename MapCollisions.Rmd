@@ -128,6 +128,7 @@ d <- append(d, 0, after=0)
 
 street <- pointdatasum
 street$dist <- d
+street$cumdist <- cumsum(d)
 street <- street %>% filter(Latitude<29.8545)
 #   running windowed sum along sorted array
 #   First regularize the data to a distance of 100 feet
@@ -143,12 +144,49 @@ ggplot(totregdf) +
   geom_point(aes(x=dist, y=total)) +
   geom_line(aes(x=dist, y=total))
 
-street$dint <- dint
+#   attach totals to lat longs. Interp lat/long to new dist, then 
+#   do a join by dist for totals
+a <- approx(street$cumdist, street$Latitude, totregdf$dist)
+output <- as.data.frame(a)
+names(output) <- c("dist", "Latitude")
+a <- approx(street$cumdist, street$Longitude, totregdf$dist)
+a <- as.data.frame(a)
+names(a) <- c("dist", "Longitude")
+output <- merge(output,a, by="dist")
+totregdf <- merge(output,totregdf, by="dist")
+
 #   plot
 
-ggplot(street) +
-  geom_point(aes(y=dist, x=Latitude)) +
-  geom_line(aes(y=dist, x=Latitude)) 
+totregdf <- totregdf %>% filter(Latitude<29.82)
+ggmap(gmap, extent='normal', maprange=FALSE, show.legend=FALSE) +
+  geom_point(data=totregdf, aes(x=Longitude, y=Latitude, color=total)) +
+  scale_color_continuous(high = "red", low = "green", name="Collisions\nper mile") 
+```
+
+```{r look for streets with most collisions per mile}
+
+    # first do it wrong by dividing total collisions by total length
+
+temp <- collisions %>% filter(!is.na(Latitude)) %>%
+  select(Latitude, Longitude, Street_Name)
+#   create latlong has for grouping
+temp$hash <- paste(as.character(round(temp$Latitude,4)), as.character(round(temp$Longitude,4)), sep="/")
+
+#   summarize by location
+tempsum <- temp %>%
+  group_by(Street_Name) %>%
+  summarise(total=n(), MaxLat=max(Latitude), MinLat=min(Latitude), MaxLon=max(Longitude), MinLon=min(Longitude)) 
+
+#   calculate linear distance in miles between end points
+#   0.000274961 degrees = 100 feet
+degmi <- 1./(52.8*0.000274961) # miles per degree
+  d <- tempsum %>% mutate(dist = (sqrt(MaxLat-MinLat)**2 + (MaxLon-MinLon)**2) * degmi, rate=total/dist) %>%
+    filter(rate<5000, total>10, dist>0.5)
+
+ggplot(d, aes(rate)) +
+  geom_histogram()
+
+#     Perhaps group by block number to get a better estimate?
 
 ```
 

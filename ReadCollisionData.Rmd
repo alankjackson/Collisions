@@ -27,6 +27,27 @@ Severity <- cbind.data.frame(split(Severity, rep(1:2, times=length(Severity)/2))
 names(Severity) <- c("Crash_Sev_ID", "Severity")
 Severity$Crash_Sev_ID <- as.integer(Severity$Crash_Sev_ID)
 
+#   Crash Harm ID table
+Harm <- c(
+"1",	"Pedestrian", 
+"2",	"Motor Vehicle in Transport",
+"3",	"Rail Road",
+"4",	"Parked Car",
+"5",	"Pedal Cyclist",
+"6",	"Animal",
+"7",	"Fixed Object",
+"8",	"Other Object",
+"9",	"Other Non-Collision",
+"10",	"Overturned",
+"11",	"Not Reported",
+"93",	"Undetermined",
+"94",	"Reported Invalid"
+)
+Harm <- cbind.data.frame(split(Harm, rep(1:2, times=length(Harm)/2)), stringsAsFactors=F)
+names(Harm) <- c("Harm_Evnt_ID", "Harmed")
+Harm$Harm_Evnt_ID <- as.integer(Harm$Harm_Evnt_ID)
+
+
 HarrisBoundary <- c(-95.990842, 29.499559, -94.852384, 30.180927)
 
 City <- c(
@@ -117,10 +138,11 @@ for (i in filenames[-1]) {
   DF <- rbind(DF, df)
 }
 
-df <- DF %>% select(Crash_Fatal_Fl, Crash_Date,	Crash_Time, Rpt_City_ID, Rpt_Block_Num, Rpt_Street_Pfx,	Rpt_Street_Name, Rpt_Street_Sfx, At_Intrsct_Fl, Latitude, Longitude, Street_Name, Street_Nbr, Tot_Injry_Cnt, Death_Cnt, Crash_Sev_ID, Crash_Speed_Limit)
+df <- DF %>% select(Crash_Fatal_Fl, Crash_Date,	Crash_Time, Rpt_City_ID, Rpt_Block_Num, Rpt_Street_Pfx,	Rpt_Street_Name, Rpt_Street_Sfx, At_Intrsct_Fl, Latitude, Longitude, Street_Name, Street_Nbr, Tot_Injry_Cnt, Death_Cnt, Crash_Sev_ID, Crash_Speed_Limit, Harm_Evnt_ID)
 
 df <- left_join(df, City, by="Rpt_City_ID")
 df <- left_join(df, Severity, by="Crash_Sev_ID")
+df <- left_join(df, Harm, by="Harm_Evnt_ID")
 
 
 
@@ -246,6 +268,21 @@ df %>% group_by(Severity) %>%
   arrange(count)
 
 ```
+
+
+```{r Look at Harmed}
+
+sort(unique(df$Harmed))
+
+df %>% group_by(Harmed) %>% 
+  summarise(count=n()) %>%
+  arrange(count)
+
+```
+
+
+
+
 ```{r Look at Rpt_Street_Name}
 
 sort(unique(df$Rpt_Street_Name))

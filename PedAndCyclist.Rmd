@@ -1,0 +1,69 @@
+---
+title: "Pedestrian and Cyclist Collisions"
+author: "Alan Jackson"
+date: "April 29, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+
+library(leaflet)
+library(dplyr)
+library(htmltools)
+library(lubridate)
+#library(ggmap)
+#library(sf)
+
+neighborhoods <- readRDS("~/Dropbox/CrimeStats/NeighborhoodPolys.rds")
+zipcodes <- readRDS("~/Dropbox/CrimeStats/ZipCodes.rds")
+collisions <- readRDS("~/Rprojects/Collisions/Collisions_2010_2017.rds")
+HoustonBoundary <- c(-95.789963, 29.518566, -95.005814, 30.117875)
+
+#   Pull out Peds for 2017
+peds <- collisions %>% filter(Harmed=="Pedestrian", !is.na(Latitude)) 
+#   Pull out Cyclists
+cycles <- collisions %>% filter(Harmed=="Pedal Cyclist", !is.na(Latitude))
+
+#m <- leaflet(data=peds) %>% fitBounds(HoustonBoundary[1], HoustonBoundary[2], HoustonBoundary[3], HoustonBoundary[4])
+
+#m <- leaflet() %>% setView(lng=-95.362414, lat=29.759525, zoom=12)
+
+#   Add Basemap
+#m %>% addTiles()
+
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r look for bad spots}
+
+peds <- peds %>% 
+  mutate(latlon=paste(as.character(Longitude), as.character(Latitude)))
+badspots <- peds %>%
+  group_by(latlon) %>%
+  summarise(total=n()) %>%
+  filter(total>6)
+
+badspots <- left_join(badspots, peds, by="latlon")
+
+stp <- stamp_time("12:59")
+
+leaflet(badspots) %>% addTiles() %>% addMarkers(
+  clusterOptions = markerClusterOptions(), popup=paste(sep="<br/>",badspots$Severity, badspots$Crash_Date, stp(badspots$Crash_Time))
+)
+```
+
+
+
+
+
+```{r Add in points for Pedestrian collisions}
+
+stp <- stamp_time("12:59")
+
+leaflet(peds) %>% addTiles() %>% addMarkers(
+  clusterOptions = markerClusterOptions(), popup=paste(sep="<br/>",peds$Severity, peds$Crash_Date, stp(peds$Crash_Time))
+)
+
+```
+

@@ -173,6 +173,8 @@ sort(unique(df$Crash_Fatal_Fl))
 
 sort(unique(df$Crash_Date))
 
+df$Crash_DateTime <- mdy_hm(paste(df$Crash_Date, df$Crash_Time))
+
 #  make it a date
 
 df$Crash_Date <- mdy(df$Crash_Date)

@@ -11,12 +11,13 @@ library(leaflet)
 library(dplyr)
 library(htmltools)
 library(lubridate)
+library(ggplot2)
 #library(ggmap)
 #library(sf)
 
 neighborhoods <- readRDS("~/Dropbox/CrimeStats/NeighborhoodPolys.rds")
 zipcodes <- readRDS("~/Dropbox/CrimeStats/ZipCodes.rds")
-collisions <- readRDS("~/Rprojects/Collisions/Collisions_2010_2017.rds")
+collisions <- readRDS("~/Dropbox/Rprojects/Collisions/Collisions_2010_2017nozip.rds")
 HoustonBoundary <- c(-95.789963, 29.518566, -95.005814, 30.117875)
 
 #   Pull out Peds for 2017
@@ -42,7 +43,7 @@ peds <- peds %>%
 badspots <- peds %>%
   group_by(latlon) %>%
   summarise(total=n()) %>%
-  filter(total>6)
+  filter(total>0)
 
 badspots <- left_join(badspots, peds, by="latlon")
 
@@ -54,9 +55,6 @@ leaflet(badspots) %>% addTiles() %>% addMarkers(
 ```
 
 
-
-
-
 ```{r Add in points for Pedestrian collisions}
 
 stp <- stamp_time("12:59")
@@ -64,6 +62,40 @@ stp <- stamp_time("12:59")
 leaflet(peds) %>% addTiles() %>% addMarkers(
   clusterOptions = markerClusterOptions(), popup=paste(sep="<br/>",peds$Severity, peds$Crash_Date, stp(peds$Crash_Time))
 )
+
+```
+
+What is probability of pedestrian incident being fatal as
+a function of the road type?
+
+```{r severity as function of road type}
+
+# stacked bar of % severity by road type
+peds$Severity <-  factor(peds$Severity, levels=c("UNKNOWN", "NOT INJURED", "POSSIBLE INJURY", "NON-INCAPACITATING", "SUSPECTED SERIOUS INJURY", "FATAL"))
+
+peds$RoadType <-  factor(peds$RoadType, levels=c("OTHER ROADS", "CITY STREET", "COUNTY ROAD", "FARM TO MARKET", "TOLLWAY", "US & STATE HIGHWAYS","INTERSTATE"))
+
+peds %>% ggplot() +
+  geom_bar(aes(x=Severity, fill=RoadType), position="fill") +
+  coord_flip() +
+  labs(title="Pedestrian/Automobile Collisions in Harris County, 2010-2017", y="Fraction of Incidents")
+
+peds %>% ggplot() +
+  geom_bar(aes(fill=Severity, x=RoadType), position="fill") +
+  coord_flip() +
+  labs(title="Pedestrian/Automobile Collisions in Harris County, 2010-2017", y="Fraction of Incidents")
+
+
+peds %>% ggplot() +
+  geom_bar(aes(x=Severity, fill=RoadType), position="dodge" ) +
+  coord_flip() +
+  labs(title="Pedestrian/Automobile Collisions in Harris County, 2010-2017")
+
+peds %>% ggplot() +
+  geom_bar(aes(fill=Severity, x=RoadType), position="dodge" ) +
+  coord_flip() +
+  labs(title="Pedestrian/Automobile Collisions in Harris County, 2010-2017")
+
 
 ```
 

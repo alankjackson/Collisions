@@ -1,0 +1,57 @@
+---
+title: "Pedestrian/Auto Collisions"
+author: "Alan K Jackson"
+date: "May 8, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+
+library(dplyr)
+library(htmltools)
+library(lubridate)
+library(ggplot2)
+
+collisions <- readRDS("~/Dropbox/Rprojects/Collisions/Collisions_2010_2017nozip.rds")
+HoustonBoundary <- c(-95.789963, 29.518566, -95.005814, 30.117875)
+
+#   Pull out Peds that have geocoding
+peds <- collisions %>% filter(Harmed=="Pedestrian", !is.na(Latitude)) 
+
+#   Create a lat/long hash to group on
+peds <- peds %>% 
+  mutate(latlon=paste(as.character(Longitude), as.character(Latitude)))
+
+#   set ordering for severity and road type
+peds$Severity <-  factor(peds$Severity, levels=c("UNKNOWN", "NOT INJURED", "POSSIBLE INJURY", "NON-INCAPACITATING", "SUSPECTED SERIOUS INJURY", "FATAL"))
+
+#peds$RoadType <-  factor(peds$RoadType, levels=c("OTHER ROADS", "CITY STREET", "COUNTY ROAD", "FARM TO MARKET", "TOLLWAY", "US & STATE HIGHWAYS","INTERSTATE"))
+
+
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Pedestrian/Automobile Incidents in Harris County
+
+Based on the TxDOT data from 2010 to 2017, I have analyzed incidents where pedestrians got hit by cars. First we will begin with some general statistics, and then bore down to some more specific items.
+
+```{r overall, echo=FALSE}
+peds %>% 
+  #group_by(Severity) %>%
+  #summarise(count=n()) %>%
+  ggplot(aes(x=Severity)) +
+  geom_bar(fill="light blue") +
+  geom_text(aes(label=..count..), stat='count', size = 3, color="black", position=position_stack(vjust=0.7) ) +
+  coord_flip() +
+  labs(title="Pedestrian/Auto Incidents in Harris County, 2010-2017")
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

@@ -15,7 +15,7 @@ library(ggplot2)
 collisions <- readRDS("~/Dropbox/Rprojects/Collisions/Collisions_2010_2017nozip.rds")
 HoustonBoundary <- c(-95.789963, 29.518566, -95.005814, 30.117875)
 
-#   Pull out Peds that have geocoding
+#   Pull out Peds 
 peds <- collisions %>% filter(Harmed=="Pedestrian", !is.na(Latitude)) 
 
 #   Create a lat/long hash to group on
@@ -25,7 +25,9 @@ peds <- peds %>%
 #   set ordering for severity and road type
 peds$Severity <-  factor(peds$Severity, levels=c("UNKNOWN", "NOT INJURED", "POSSIBLE INJURY", "NON-INCAPACITATING", "SUSPECTED SERIOUS INJURY", "FATAL"))
 
-#peds$RoadType <-  factor(peds$RoadType, levels=c("OTHER ROADS", "CITY STREET", "COUNTY ROAD", "FARM TO MARKET", "TOLLWAY", "US & STATE HIGHWAYS","INTERSTATE"))
+SevereColor <- c("UNKNOWN"="gray", "NOT INJURED"="green", "POSSIBLE INJURY"="turquoise3", "NON-INCAPACITATING"="purple", "SUSPECTED SERIOUS INJURY"="orange", "FATAL"="red")
+
+peds$RoadType <-  factor(peds$RoadType, levels=c("OTHER ROADS", "CITY STREET", "COUNTY ROAD", "FARM TO MARKET", "TOLLWAY", "US & STATE HIGHWAYS","INTERSTATE"))
 
 
 knitr::opts_chunk$set(echo = TRUE)
@@ -33,25 +35,43 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Pedestrian/Automobile Incidents in Harris County
 
-Based on the TxDOT data from 2010 to 2017, I have analyzed incidents where pedestrians got hit by cars. First we will begin with some general statistics, and then bore down to some more specific items.
+Based on the TxDOT data from 2010 to 2017, I have analyzed incidents where pedestrians got hit by cars. First we will begin with some general statistics, and then bore down to some more specific items.  
+
+## Injury Distribution
 
 ```{r overall, echo=FALSE}
+
 peds %>% 
-  #group_by(Severity) %>%
-  #summarise(count=n()) %>%
   ggplot(aes(x=Severity)) +
-  geom_bar(fill="light blue") +
-  geom_text(aes(label=..count..), stat='count', size = 3, color="black", position=position_stack(vjust=0.7) ) +
+  geom_bar(fill=SevereColor) +
+  geom_label(aes(label=..count..), stat='count', size = 3) +
   coord_flip() +
   labs(title="Pedestrian/Auto Incidents in Harris County, 2010-2017")
 ```
 
-## Including Plots
+## Injuries as a function of road type
 
-You can also embed plots, for example:
+It seems obvious that if you get hit on the freeway, you are more likely to die, but let's test that hypothesis, just to be sure.  
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+```{r Injuries vs. RoadType, echo=FALSE}
+peds %>% ggplot() +
+  geom_bar(aes(x=RoadType, fill=Severity), position="dodge" ) +
+  coord_flip() +
+  scale_fill_manual("Severity",values = c("gray", "green", "turquoise3", "purple", "orange", "red")) +
+  labs(title="Pedestrian/Automobile Collisions in Harris County, 2010-2017")
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+## Maps
+
+Let's make some maps
+
+```{r Mapping Prep, echo=FALSE}
+
+#   Pull out Peds with geocoding
+peds <- collisions %>% filter(!is.na(Latitude)) 
+
+#   Create a lat/long hash to group on
+peds <- peds %>% 
+  mutate(latlon=paste(as.character(Longitude), as.character(Latitude)))
+```
+

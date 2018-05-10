@@ -5,18 +5,21 @@ date: "May 8, 2018"
 output: html_document
 ---
 
+<img src="Logo.png" style="position:absolute;top:0px;right:0px;" />
+
 ```{r setup, include=FALSE}
 
 library(dplyr)
 library(htmltools)
 library(lubridate)
 library(ggplot2)
+library(magick)
 
 collisions <- readRDS("~/Dropbox/Rprojects/Collisions/Collisions_2010_2017nozip.rds")
 HoustonBoundary <- c(-95.789963, 29.518566, -95.005814, 30.117875)
 
 #   Pull out Peds 
-peds <- collisions %>% filter(Harmed=="Pedestrian", !is.na(Latitude)) 
+peds <- collisions %>% filter(Harmed=="Pedestrian") 
 
 #   Create a lat/long hash to group on
 peds <- peds %>% 
@@ -29,15 +32,18 @@ SevereColor <- c("UNKNOWN"="gray", "NOT INJURED"="green", "POSSIBLE INJURY"="tur
 
 peds$RoadType <-  factor(peds$RoadType, levels=c("OTHER ROADS", "CITY STREET", "COUNTY ROAD", "FARM TO MARKET", "TOLLWAY", "US & STATE HIGHWAYS","INTERSTATE"))
 
+caption = "Alan Jackson, Adelie Resources, LLC 2018"
 
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ## Pedestrian/Automobile Incidents in Harris County
 
-Based on the TxDOT data from 2010 to 2017, I have analyzed incidents where pedestrians got hit by cars. First we will begin with some general statistics, and then bore down to some more specific items.  
+Based on the [TxDOT](https://cris.dot.state.tx.us/public/Query/app/public/welcome) data from 2010 to 2017, I have analyzed incidents where pedestrians got hit by cars. First we will begin with some general statistics, and then bore down to some more specific items.  
 
 ## Injury Distribution
+
+The state has six categories of injury (if we include "Unknown"). Somewhat surprisingly, there are about 100 pedestrian fatalies per year in the county. And about 3 incidents per day, on average.
 
 ```{r overall, echo=FALSE}
 
@@ -46,20 +52,62 @@ peds %>%
   geom_bar(fill=SevereColor) +
   geom_label(aes(label=..count..), stat='count', size = 3) +
   coord_flip() +
-  labs(title="Pedestrian/Auto Incidents in Harris County, 2010-2017")
+  labs(title = "Pedestrian/Auto Collisions in Harris County, 2010-2017", 
+       caption = caption)+
+  theme(legend.position = "bottom",
+        plot.caption = element_text(size = 8, hjust = 0.5 ))
 ```
 
 ## Injuries as a function of road type
 
 It seems obvious that if you get hit on the freeway, you are more likely to die, but let's test that hypothesis, just to be sure.  
+As the plot indicates, injuries on a highway are much more likely to be fatal, but most collisions occur on city streets.
 
 ```{r Injuries vs. RoadType, echo=FALSE}
 peds %>% ggplot() +
   geom_bar(aes(x=RoadType, fill=Severity), position="dodge" ) +
   coord_flip() +
   scale_fill_manual("Severity",values = c("gray", "green", "turquoise3", "purple", "orange", "red")) +
-  labs(title="Pedestrian/Automobile Collisions in Harris County, 2010-2017")
+  xlab("Road Type")+
+  labs(title = "Pedestrian/Auto Collisions in Harris County, 2010-2017", 
+       subtitle = "Severity vs. Road Type", 
+       caption = "Alan Jackson, Adelie Resources, LLC 2018") +
+  theme(legend.position = "right",
+        plot.caption = element_text(size = 8, hjust = 0.5 ))
 ```
+
+## Data issues
+
+The data is not perfect, there are a few issues. Not all of the locations make sense, and so cannot be linked to a latitude and longitude location, limiting the analysis to a degree. Only `r round(100*nrow(peds %>% filter(!is.na(Latitude)))/nrow(peds),1)`% of the data is geocoded. And as can be seen above, a significant fraction of the roads are not coded as to type.
+
+## City Streets and Pedestrians
+
+My primary interest is looking at city streets, to see where there may be hotspots, and to try to predict which spots are most likely to see a fatality or serious injury. So for now, I will restrict analysis to "City Streets".  
+
+Let's consider what time of day these incidents occur. I have heard it proposed that many incidents may be due to bars letting out and people wandering into the road in an impaired state. Or perhaps the driver is impaired. 
+
+Doesn't look like impairment is a major factor. It appears that the incidents peak during rush hour. Well, there is a minor peak at 2 AM when the bars close. And an intriguing jump at 3 PM. Is that related to school letting out? I'll have to look at that later.
+
+```{r city street analysis, echo=FALSE}
+
+citypeds <- peds %>% filter(RoadType=="CITY STREET")
+
+#stp <- stamp_time("12:59") # set up template for hh:mm
+
+citypeds %>% mutate(HourOfDay=hour(citypeds$Crash_DateTime)) %>%
+  ggplot() +
+  geom_bar(aes(x=HourOfDay)) +
+  xlab("Hour of Day")+
+  labs(title = "Pedestrian/Auto Collisions, Houston City Streets, 2010-2017", 
+       subtitle = "Hour of Day", 
+       caption = "Alan Jackson, Adelie Resources, LLC 2018")+
+  theme(legend.position = "bottom",
+        plot.caption = element_text(size = 8, hjust = 0.5 ))
+```
+
+## Time of Year
+
+## Long-term trends - is it getting better?
 
 ## Maps
 
@@ -68,7 +116,7 @@ Let's make some maps
 ```{r Mapping Prep, echo=FALSE}
 
 #   Pull out Peds with geocoding
-peds <- collisions %>% filter(!is.na(Latitude)) 
+peds <- peds %>% filter(!is.na(Latitude)) 
 
 #   Create a lat/long hash to group on
 peds <- peds %>% 

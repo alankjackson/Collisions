@@ -14,6 +14,8 @@ library(htmltools)
 library(lubridate)
 library(ggplot2)
 library(magick)
+library(tidyr)
+library(scales)
 
 collisions <- readRDS("~/Dropbox/Rprojects/Collisions/Collisions_2010_2017nozip.rds")
 HoustonBoundary <- c(-95.789963, 29.518566, -95.005814, 30.117875)
@@ -30,7 +32,7 @@ peds$Severity <-  factor(peds$Severity, levels=c("UNKNOWN", "NOT INJURED", "POSS
 
 SevereColor <- c("UNKNOWN"="gray", "NOT INJURED"="green", "POSSIBLE INJURY"="turquoise3", "NON-INCAPACITATING"="purple", "SUSPECTED SERIOUS INJURY"="orange", "FATAL"="red")
 
-peds$RoadType <-  factor(peds$RoadType, levels=c("OTHER ROADS", "CITY STREET", "COUNTY ROAD", "FARM TO MARKET", "TOLLWAY", "US & STATE HIGHWAYS","INTERSTATE"))
+peds$RoadType <-  factor(peds$RoadType, levels=c("NON TRAFFICWAY", "OTHER ROADS", "CITY STREET", "COUNTY ROAD", "FARM TO MARKET", "TOLLWAY", "US & STATE HIGHWAYS","INTERSTATE"))
 
 caption = "Alan Jackson, Adelie Resources, LLC 2018"
 
@@ -61,7 +63,9 @@ peds %>%
 ## Injuries as a function of road type
 
 It seems obvious that if you get hit on the freeway, you are more likely to die, but let's test that hypothesis, just to be sure.  
-As the plot indicates, injuries on a highway are much more likely to be fatal, but most collisions occur on city streets.
+As the plot indicates, injuries on a highway are much more likely to be fatal, but most collisions occur on city streets.  
+
+But what the heck is this "non trafficway" category of road? I think it must mostly be parking lots, with a few driveways thrown in.
 
 ```{r Injuries vs. RoadType, echo=FALSE}
 peds %>% ggplot() +
@@ -78,7 +82,7 @@ peds %>% ggplot() +
 
 ## Data issues
 
-The data is not perfect, there are a few issues. Not all of the locations make sense, and so cannot be linked to a latitude and longitude location, limiting the analysis to a degree. Only `r round(100*nrow(peds %>% filter(!is.na(Latitude)))/nrow(peds),1)`% of the data is geocoded. And as can be seen above, a significant fraction of the roads are not coded as to type.
+The data is not perfect, there are a few issues. Not all of the locations make sense, and so cannot be linked to a latitude and longitude location, limiting the analysis to a degree. Only `r round(100*nrow(peds %>% filter(!is.na(Latitude)))/nrow(peds),1)`% of the data is geocoded. 
 
 ## City Streets and Pedestrians
 
@@ -96,7 +100,7 @@ citypeds <- peds %>% filter(RoadType=="CITY STREET")
 
 citypeds %>% mutate(HourOfDay=hour(citypeds$Crash_DateTime)) %>%
   ggplot() +
-  geom_bar(aes(x=HourOfDay)) +
+  geom_bar(aes(x=HourOfDay), fill = "darkorchid4") +
   xlab("Hour of Day")+
   labs(title = "Pedestrian/Auto Collisions, Houston City Streets, 2010-2017", 
        subtitle = "Hour of Day", 
@@ -105,9 +109,52 @@ citypeds %>% mutate(HourOfDay=hour(citypeds$Crash_DateTime)) %>%
         plot.caption = element_text(size = 8, hjust = 0.5 ))
 ```
 
+## Day of Week
+
+How about day of the week? Not surprisingly, Sunday is the low day, and Saturday is rather low as well. Friday is the most dangerous day. Is that due to everyone being in a hurry? Drinking? Something else? Later we'll examine the weekend effect with respect to location. Perhaps the drop represents not many people downtown on the weekend?
+
+```{r Day of Week, echo=FALSE}
+
+citypeds %>% mutate(Daynum=wday(Crash_Date)) %>%
+  ggplot(aes(x=wday(Daynum, label=TRUE))) +
+  geom_bar(fill = "darkorchid4") +
+  xlab("Hour of Day")+
+  labs(title = "Pedestrian/Auto Collisions, Houston City Streets, 2010-2017", 
+       subtitle = "Hour of Day", 
+       caption = "Alan Jackson, Adelie Resources, LLC 2018")+
+  theme(legend.position = "bottom",
+        plot.caption = element_text(size = 8, hjust = 0.5 ))
+```
+
+
 ## Time of Year
 
+There is a strong indication that there are fewer incidents during the summer than other times. Is that related to school being out? People on vacation? Maybe drivers are mellower during the summer? Certainly life is less hectic for commuters with kids - and teh hours that people commute tend to change a bit with the season. But the week-to-week scatter outside summer is puzzling. I have no idea what that means. 
+
+```{r Time of Year, echo=FALSE, message=FALSE}
+
+citypeds %>% mutate(WkOfYear=as.Date(paste0("2000-",month(floor_date(Crash_Date, "week")),"-",day(floor_date(Crash_Date, "week")), "%Y-%m-%d"))) %>%
+  group_by(WkOfYear) %>%
+  summarise(WeeklyTotal=n()) %>%
+  ggplot() +
+  #geom_bar(aes(x=WkOfYear), fill = "darkorchid4") +
+  geom_point(aes(x=WkOfYear, y=WeeklyTotal)) +
+  geom_smooth(aes(x=WkOfYear, y=WeeklyTotal))  +
+  scale_x_date(date_labels = "%b")+
+  xlab("Month of Year") +
+  labs(title = "Pedestrian/Auto Collisions, Houston City Streets, 2010-2017", 
+       subtitle = "Month of Year", 
+       caption = "Alan Jackson, Adelie Resources, LLC 2018")+
+  theme(legend.position = "bottom",
+        plot.caption = element_text(size = 8, hjust = 0.5 ))
+            
+```
+
 ## Long-term trends - is it getting better?
+
+## Where are the worst spots for number of incidents?
+
+## Where are most fatalities?
 
 ## Maps
 

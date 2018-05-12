@@ -152,7 +152,58 @@ citypeds %>% mutate(WkOfYear=as.Date(paste0("2000-",month(floor_date(Crash_Date,
 
 ## Long-term trends - is it getting better?
 
+Sadly, it appears that the rate has increased significantly since 2010, rising from around 10 incidents per week to 15 by 2013. The good news is that it appears that the rate has leveled off since then, but no discernable improvement.
+
+```{r Long Term Trends, echo=FALSE, message=FALSE}
+
+citypeds %>% mutate(ByWeek=floor_date(Crash_Date, "week")) %>%
+  group_by(ByWeek) %>%
+  summarise(WeeklyTotal=n()) %>%
+  ggplot() +
+  geom_point(aes(x=ByWeek, y=WeeklyTotal)) +
+  geom_smooth(aes(x=ByWeek, y=WeeklyTotal))  +
+  xlab("Date") +
+  ylab("Total Weekly Incidents") +
+  labs(title = "Pedestrian/Auto Collisions, Houston City Streets, 2010-2017", 
+       subtitle = "Weekly Totals", 
+       caption = "Alan Jackson, Adelie Resources, LLC 2018")+
+  theme(legend.position = "bottom",
+        plot.caption = element_text(size = 8, hjust = 0.5 ))
+            
+```
+
 ## Where are the worst spots for number of incidents?
+
+The worst is a location that has racked up 13 incidents in 7 years - about one incident every 6 months. 260 locationa have seen 2 incidents, 81 locations have seen three. If one were looking for a way to prioritize work, this might be a good start.
+
+```{r Where are the worst spots for accidents?, echo=FALSE}
+
+citypedslatlng <- citypeds %>% 
+  filter(!is.na(Latitude)) %>%
+  mutate(latlon=paste(as.character(Longitude), as.character(Latitude)))
+ 
+badspots <- citypedslatlng %>%
+  group_by(latlon) %>%
+  summarise(total=n()) %>%
+  filter(total>1)
+
+badspots %>% 
+  ggplot(aes(x=total)) +
+  geom_bar(fill = "darkorchid4") +
+  geom_label(aes(label=..count..), stat='count', size = 3) +
+  labs(title = "Pedestrian/Auto Collisions in Harris County, 2010-2017", 
+       subtitle = "Number of locations with more than one incident", 
+       caption = caption) +
+    xlab("Number of Incidents")+
+    ylab("Number of locations") +
+  theme(legend.position = "bottom",
+        plot.caption = element_text(size = 8, hjust = 0.5 ))
+
+#badspots <- left_join(badspots, citypedslatlng, by="latlon")
+
+
+```
+
 
 ## Where are most fatalities?
 
@@ -163,10 +214,10 @@ Let's make some maps
 ```{r Mapping Prep, echo=FALSE}
 
 #   Pull out Peds with geocoding
-peds <- peds %>% filter(!is.na(Latitude)) 
+#peds <- peds %>% filter(!is.na(Latitude)) 
 
 #   Create a lat/long hash to group on
-peds <- peds %>% 
-  mutate(latlon=paste(as.character(Longitude), as.character(Latitude)))
+#peds <- peds %>% 
+#  mutate(latlon=paste(as.character(Longitude), as.character(Latitude)))
 ```
 

@@ -322,6 +322,20 @@ df %>% group_by(Harmed) %>%
 ```
 
 
+```{r Look at RoadType}
+
+sort(unique(df$RoadType))
+```
+
+
+
+```{r Look at Intersection}
+
+sort(unique(df$Intersection))
+```
+
+
+
 
 
 ```{r Look at Rpt_Street_Name}

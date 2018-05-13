@@ -14,14 +14,14 @@ googlecrs <- 4326
 
 #   Crash Severity ID table
 Severity <- c(
-"0",	"UNKNOWN", 
-"1",	"SUSPECTED SERIOUS INJURY",
-"2",	"NON-INCAPACITATING",
-"3",	"POSSIBLE INJURY",
-"4",	"FATAL",
-"5",	"NOT INJURED",
-"94",	"REPORTED INVALID",
-"95",	"NOT REPORTED"
+"0",	"Unknown", 
+"1",	"Suspected Serious Injury",
+"2",	"Non-Incapacitating",
+"3",	"Possible Injury",
+"4",	"Fatal",
+"5",	"Not Injured",
+"94",	"Reported Invalid",
+"95",	"Not Reported"
 )
 Severity <- cbind.data.frame(split(Severity, rep(1:2, times=length(Severity)/2)), stringsAsFactors=F)
 names(Severity) <- c("Crash_Sev_ID", "Severity")
@@ -44,18 +44,18 @@ Intersection$Intrsct_Relat_ID <- as.integer(Intersection$Intrsct_Relat_ID)
 
 #   Road Type ID table
 RoadType <- c(
-  "1", "INTERSTATE",
-  "2", "US & STATE HIGHWAYS",
-  "3", "FARM TO MARKET",
-  "4", "COUNTY ROAD",
-  "5", "CITY STREET",
-  "6", "TOLLWAY",
-  "7", "OTHER ROADS",
-  "8", "TOLL BRIDGES",
-  "9", "NON TRAFFICWAY",
-  "93", "UNDETERMINED - FAILED BUSINESS RULE(S)",
-  "94", "REPORTED INVALID",
-  "95", "NOT REPORTED"
+  "1", "Interstate",
+  "2", "US & State Highways",
+  "3", "Farm To Market",
+  "4", "County Road",
+  "5", "City Street",
+  "6", "Tollway",
+  "7", "Other Roads",
+  "8", "Toll Bridges",
+  "9", "Non Trafficway",
+  "93", "Undetermined - Failed Business Rule(s)",
+  "94", "Reported Invalid",
+  "95", "Not Reported"
 )
 RoadType <- cbind.data.frame(split(RoadType, rep(1:2, times=length(RoadType)/2)), stringsAsFactors=F)
 names(RoadType) <- c("Road_Cls_ID", "RoadType")
@@ -335,8 +335,11 @@ sort(unique(df$Intersection))
 ```
 
 
+```{r Look at Number of Lanes}
 
-
+sort(unique(df$Nbr_Of_Lane))
+summary(df$Nbr_Of_Lane)
+```
 
 ```{r Look at Rpt_Street_Name}
 

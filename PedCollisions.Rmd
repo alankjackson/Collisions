@@ -35,6 +35,7 @@ SevereColor <- c("UNKNOWN"="gray", "NOT INJURED"="green", "POSSIBLE INJURY"="tur
 peds$RoadType <-  factor(peds$RoadType, levels=c("NON TRAFFICWAY", "OTHER ROADS", "CITY STREET", "COUNTY ROAD", "FARM TO MARKET", "TOLLWAY", "US & STATE HIGHWAYS","INTERSTATE"))
 
 caption = "Alan Jackson, Adelie Resources, LLC 2018"
+theme_update(plot.caption = element_text(size = 7 ))
 
 knitr::opts_chunk$set(echo = TRUE)
 ```
@@ -56,8 +57,7 @@ peds %>%
   coord_flip() +
   labs(title = "Pedestrian/Auto Collisions in Harris County, 2010-2017", 
        caption = caption)+
-  theme(legend.position = "bottom",
-        plot.caption = element_text(size = 8, hjust = 0.5 ))
+  theme(legend.position = "bottom")
 ```
 
 ## Injuries as a function of road type
@@ -75,9 +75,9 @@ peds %>% ggplot() +
   xlab("Road Type")+
   labs(title = "Pedestrian/Auto Collisions in Harris County, 2010-2017", 
        subtitle = "Severity vs. Road Type", 
-       caption = "Alan Jackson, Adelie Resources, LLC 2018") +
-  theme(legend.position = "right",
-        plot.caption = element_text(size = 8, hjust = 0.5 ))
+       caption = caption) +
+  theme(legend.position = "right")
+       
 ```
 
 ## Data issues
@@ -104,9 +104,9 @@ citypeds %>% mutate(HourOfDay=hour(citypeds$Crash_DateTime)) %>%
   xlab("Hour of Day")+
   labs(title = "Pedestrian/Auto Collisions, Houston City Streets, 2010-2017", 
        subtitle = "Hour of Day", 
-       caption = "Alan Jackson, Adelie Resources, LLC 2018")+
-  theme(legend.position = "bottom",
-        plot.caption = element_text(size = 8, hjust = 0.5 ))
+       caption = caption) +
+  theme(legend.position = "bottom")
+       
 ```
 
 ## Day of Week
@@ -118,12 +118,12 @@ How about day of the week? Not surprisingly, Sunday is the low day, and Saturday
 citypeds %>% mutate(Daynum=wday(Crash_Date)) %>%
   ggplot(aes(x=wday(Daynum, label=TRUE))) +
   geom_bar(fill = "darkorchid4") +
-  xlab("Hour of Day")+
+  xlab("Day of Week")+
   labs(title = "Pedestrian/Auto Collisions, Houston City Streets, 2010-2017", 
-       subtitle = "Hour of Day", 
-       caption = "Alan Jackson, Adelie Resources, LLC 2018")+
-  theme(legend.position = "bottom",
-        plot.caption = element_text(size = 8, hjust = 0.5 ))
+       subtitle = "Day of Week", 
+       caption = caption) +
+  theme(legend.position = "bottom")
+        
 ```
 
 
@@ -144,9 +144,8 @@ citypeds %>% mutate(WkOfYear=as.Date(paste0("2000-",month(floor_date(Crash_Date,
   xlab("Month of Year") +
   labs(title = "Pedestrian/Auto Collisions, Houston City Streets, 2010-2017", 
        subtitle = "Month of Year", 
-       caption = "Alan Jackson, Adelie Resources, LLC 2018")+
-  theme(legend.position = "bottom",
-        plot.caption = element_text(size = 8, hjust = 0.5 ))
+       caption = caption) +
+  theme(legend.position = "bottom")
             
 ```
 
@@ -163,20 +162,20 @@ citypeds %>% mutate(ByWeek=floor_date(Crash_Date, "week")) %>%
   geom_point(aes(x=ByWeek, y=WeeklyTotal)) +
   geom_smooth(aes(x=ByWeek, y=WeeklyTotal))  +
   xlab("Date") +
-  ylab("Total Weekly Incidents") +
+  ylab("Total Incidents per Week") +
   labs(title = "Pedestrian/Auto Collisions, Houston City Streets, 2010-2017", 
        subtitle = "Weekly Totals", 
-       caption = "Alan Jackson, Adelie Resources, LLC 2018")+
-  theme(legend.position = "bottom",
-        plot.caption = element_text(size = 8, hjust = 0.5 ))
+       caption = caption) +
+  theme(legend.position = "bottom")
             
 ```
 
 ## Where are the worst spots for number of incidents?
 
-The worst is a location that has racked up 13 incidents in 7 years - about one incident every 6 months. 260 locationa have seen 2 incidents, 81 locations have seen three. If one were looking for a way to prioritize work, this might be a good start.
+The worst is a location that has racked up 13 incidents in 7 years - about one incident every 6 months. 260 locations have seen two incidents, 81 locations have seen three. If one were looking for a way to prioritize work, this might be a good start.
 
-```{r Where are the worst spots for accidents?, echo=FALSE}
+
+```{r Where are the worst spots for accidents, echo=FALSE}
 
 citypedslatlng <- citypeds %>% 
   filter(!is.na(Latitude)) %>%
@@ -187,6 +186,7 @@ badspots <- citypedslatlng %>%
   summarise(total=n()) %>%
   filter(total>1)
 
+
 badspots %>% 
   ggplot(aes(x=total)) +
   geom_bar(fill = "darkorchid4") +
@@ -196,10 +196,56 @@ badspots %>%
        caption = caption) +
     xlab("Number of Incidents")+
     ylab("Number of locations") +
-  theme(legend.position = "bottom",
-        plot.caption = element_text(size = 8, hjust = 0.5 ))
+  theme(legend.position = "bottom")
 
 #badspots <- left_join(badspots, citypedslatlng, by="latlon")
+
+
+```
+
+## Does number of incidents predict fatalities?
+
+Do you prioritize improving locations where there has been a fatality? Or do you prioritize by number of incidents - even if none of them were serious. To get a handle on this, let's look at whether or not the number of incidents is related to the number of serious incidents.
+
+```{r Number of incidents vs seriousness, echo=FALSE}
+ 
+badspots <- citypedslatlng %>%
+  group_by(latlon) %>%
+  summarise(total=n())
+
+badspots <- citypedslatlng %>%
+  group_by(latlon) %>%
+  summarise(total=n(), 
+            fatal=sum(Crash_Sev_ID==4),             
+            serious=sum(Crash_Sev_ID==1),
+            injury=sum(Crash_Sev_ID==2),
+            maybe=sum(Crash_Sev_ID==3),
+            okay=sum(Crash_Sev_ID==5),
+            unk=sum(Crash_Sev_ID==0)) %>%
+  group_by(total) %>%
+  summarise(totalsum=sum(total),
+            fatal=sum(fatal)/totalsum,             
+            serious=sum(serious)/totalsum,
+            injury=sum(injury)/totalsum,
+            maybe=sum(maybe)/totalsum,
+            okay=sum(okay)/totalsum,
+            unk=sum(unk)/totalsum) %>%
+  gather(Severity, SumSevere, fatal:unk)
+  
+badspots$Severity <-  factor(badspots$Severity, levels=c("unk", "okay", "maybe", "injury", "serious", "fatal"))
+
+badspots %>%
+  ggplot() +
+  geom_point(aes(x=total, y=SumSevere, color=Severity)) +
+  #geom_bar(aes(x=total, fill=Severity), stat='identity', position="dodge") 
+  geom_smooth(aes(x=total, y=SumSevere, color=Severity), method='lm', formula=y~x, se=TRUE)  +
+  xlab("Number of Incidents") +
+  ylab("Percent") +
+  scale_color_manual("Severity",values = c("gray", "green", "turquoise3", "purple", "orange", "red"), labels=c("UNKNOWN", "NOT INJURED", "POSSIBLE INJURY", "NON-INCAPACITATING", "SUSPECTED SERIOUS INJURY", "FATAL")) +
+  labs(title = "Pedestrian/Auto Collisions, Houston City Streets, 2010-2017", 
+       subtitle = "Severity fraction vs. number of incidents - how dangerous is a given spot?", 
+       caption = caption) +
+  theme(legend.position = "right")
 
 
 ```

@@ -306,7 +306,7 @@ badspots %>%
 ## What about Jaywalking?
 
 Is there a pattern related to where the incident took place? At an intersection, or somewhere else? Generally, pedestrians are supposed to cross streets at corners - perhaps that is a factor?  
-It looks like nearly half of the incidents may be related to jay-walking! Now, that does not of necessity place blame on the victim. There are many locations which are far from an intersection, and due to poor design, pedestrians are encouraged by the design to cross where they should not. 
+It looks like nearly half of the incidents may be related to jaywalking! Now, that does not of necessity place blame on the victim. There are many locations which are far from an intersection, and due to poor design, pedestrians are encouraged by the design to cross where they should not. 
 
 ```{r intersections, echo=FALSE}
 
@@ -325,9 +325,52 @@ citypeds %>%
 
 ## How does the type of crossing relate to the injury severity?
 
+It looks bad to not cross at an intersection. Ceertainly away from an intersection an automobile is more likely to be traveling at the speed limit (or above), and also is not likely to expect to see a pedestrian.
+
 ```{r crossing vs severity, echo=FALSE}
 
+citypeds %>% filter(Intersection!="Not Reported") %>%
+  ggplot() +
+  geom_bar(aes(x=Intersection, fill=Severity), position="dodge" ) +
+  coord_flip() +
+  scale_fill_manual("Severity",values = c("gray", "green", "turquoise3", "purple", "orange", "red")) +
+  xlab("Location Type")+
+  ylab("Incident Count")+
+  labs(title = "Pedestrian/Auto Collisions in Harris County, 2010-2017", 
+       subtitle = "Severity vs. Location Type", 
+       caption = caption) +
+  theme(legend.position = "right")
+       
 
+```
+
+## Another look at location type and injury severity
+
+Here we see quite clearly - after consolidating "Intersection Related" and "Intersection" together - that not being at an intersection is much more dangerous. The likelihood of serious injury or death is about 50% greater at Non-Intersections.
+
+```{r Probability of injury vs location, echo=FALSE}
+
+citypeds %>%
+  filter(Severity!="Unknown") %>%
+  group_by(Severity, Intersection) %>%
+  summarise(total=n()) %>%
+  mutate(Intersection=gsub(" ", "_", Intersection, fixed=TRUE)) %>%
+  mutate(Intersection=gsub("-", "_", Intersection, fixed=TRUE)) %>%
+  spread(Intersection,total) %>%
+  mutate(mysum=0.01*(Intersection + Intersection_Related + Non_Intersection)) %>%
+  mutate(Intersection=Intersection + Intersection_Related,
+  Intersection=Intersection/mysum, Non_Intersection=Non_Intersection/mysum) %>%
+  select(Severity, Intersection, Non_Intersection) %>%
+  gather(Location, Probability, -Severity) %>%
+  ggplot(aes(x=Location, y=Probability)) +
+  geom_bar(aes(fill=Severity), position="dodge", stat='identity') +
+   scale_fill_manual("Severity",values = c("green", "turquoise3", "purple", "orange", "red")) +
+  xlab("Location Type")+
+  ylab("Percent of Cases")+
+  labs(title = "Pedestrian/Auto Collisions in Harris County, 2010-2017", 
+       subtitle = "Severity vs. Location Type", 
+       caption = caption) +
+  theme(legend.position = "right")
 
 ```
 

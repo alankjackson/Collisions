@@ -16,6 +16,7 @@ library(ggplot2)
 library(magick)
 library(tidyr)
 library(scales)
+library(xtable)
 
 collisions <- readRDS("~/Dropbox/Rprojects/Collisions/Collisions_2010_2017nozip.rds")
 HoustonBoundary <- c(-95.789963, 29.518566, -95.005814, 30.117875)
@@ -28,11 +29,11 @@ peds <- peds %>%
   mutate(latlon=paste(as.character(Longitude), as.character(Latitude)))
 
 #   set ordering for severity and road type
-peds$Severity <-  factor(peds$Severity, levels=c("UNKNOWN", "NOT INJURED", "POSSIBLE INJURY", "NON-INCAPACITATING", "SUSPECTED SERIOUS INJURY", "FATAL"))
+peds$Severity <-  factor(peds$Severity, levels=c("Unknown", "Not Injured", "Possible Injury", "Non-Incapacitating", "Suspected Serious Injury", "Fatal"))
 
-SevereColor <- c("UNKNOWN"="gray", "NOT INJURED"="green", "POSSIBLE INJURY"="turquoise3", "NON-INCAPACITATING"="purple", "SUSPECTED SERIOUS INJURY"="orange", "FATAL"="red")
+SevereColor <- c("Unknown"="gray", "Not Injured"="green", "Possible Injury"="turquoise3", "Non-Incapacitating"="purple", "Suspected Serious Injury"="orange", "Fatal"="red")
 
-peds$RoadType <-  factor(peds$RoadType, levels=c("NON TRAFFICWAY", "OTHER ROADS", "CITY STREET", "COUNTY ROAD", "FARM TO MARKET", "TOLLWAY", "US & STATE HIGHWAYS","INTERSTATE"))
+peds$RoadType <-  factor(peds$RoadType, levels=c("Non Trafficway", "Other Roads", "City Street", "County Road", "Farm To Market", "Tollway", "US & State Highways","Interstate"))
 
 caption = "Alan Jackson, Adelie Resources, LLC 2018"
 theme_update(plot.caption = element_text(size = 7 ))
@@ -80,6 +81,7 @@ peds %>% ggplot() +
        
 ```
 
+
 ## Data issues
 
 The data is not perfect, there are a few issues. Not all of the locations make sense, and so cannot be linked to a latitude and longitude location, limiting the analysis to a degree. Only `r round(100*nrow(peds %>% filter(!is.na(Latitude)))/nrow(peds),1)`% of the data is geocoded. 
@@ -94,8 +96,8 @@ Doesn't look like impairment is a major factor. It appears that the incidents pe
 
 ```{r city street analysis, echo=FALSE}
 
-citypeds <- peds %>% filter(RoadType=="CITY STREET")
-
+citypeds <- peds %>% filter(RoadType=="City Street")
+citypeds$Intersection <- as.factor(citypeds$Intersection)
 #stp <- stamp_time("12:59") # set up template for hh:mm
 
 citypeds %>% mutate(HourOfDay=hour(citypeds$Crash_DateTime)) %>%
@@ -129,7 +131,7 @@ citypeds %>% mutate(Daynum=wday(Crash_Date)) %>%
 
 ## Time of Year
 
-There is a strong indication that there are fewer incidents during the summer than other times. Is that related to school being out? People on vacation? Maybe drivers are mellower during the summer? Certainly life is less hectic for commuters with kids - and teh hours that people commute tend to change a bit with the season. But the week-to-week scatter outside summer is puzzling. I have no idea what that means. 
+There is a strong indication that there are fewer incidents during the summer than other times. Is that related to school being out? People on vacation? Maybe drivers are mellower during the summer? Certainly life is less hectic for commuters with kids - and the hours that people commute tend to change a bit with the season. But the large week-to-week scatter outside summer is puzzling. I have no idea what that means. 
 
 ```{r Time of Year, echo=FALSE, message=FALSE}
 
@@ -203,9 +205,60 @@ badspots %>%
 
 ```
 
-## Does number of incidents predict fatalities?
+## What controls the Severity?
 
-Do you prioritize improving locations where there has been a fatality? Or do you prioritize by number of incidents - even if none of them were serious. To get a handle on this, let's look at whether or not the number of incidents is related to the number of serious incidents.
+What controls how serious an incident turns out to be? Most probably the speed of the vehicle. So let's take a look at that.  
+
+Not as clear as one might think. Certainly serious injuries rise with speed, and slight (non-incapacitating) injuries fall, so that fits with expectations. But not injured stays flat - surprisingly. Fatal also is flat - but the numbers are so small that that may not be significant.
+
+```{r Speed vs Severity, echo=FALSE}
+
+#   round speed to nearest 5 mph
+
+citypeds %>% mutate(speed=as.integer((Crash_Speed_Limit+2.5)/5)*5) %>%
+  filter(speed>0) %>%
+  group_by(speed) %>%
+  summarise(totbyspeed=n(),
+            fatal=sum(Crash_Sev_ID==4),             
+            serious=sum(Crash_Sev_ID==1),
+            injury=sum(Crash_Sev_ID==2),
+            maybe=sum(Crash_Sev_ID==3),
+            okay=sum(Crash_Sev_ID==5),
+            unk=sum(Crash_Sev_ID==0)) %>%
+  mutate(fatalpct=fatal/totbyspeed*100,
+         seriouspct=serious/totbyspeed*100,
+         injurypct=injury/totbyspeed*100,
+         maybepct=maybe/totbyspeed*100,
+         okaypct=okay/totbyspeed*100,
+         unkpct=unk/totbyspeed*100
+         ) %>%
+  select(speed, totbyspeed, fatalpct:unkpct) %>%
+  rename(Fatal=fatalpct, Serious_Injury=seriouspct,  Non_Incapacitating=injurypct, Possible_Injury=maybepct, Not_Injured=okaypct, Unknown=unkpct) %>%
+  gather(Severity, Pct, Fatal:Unknown) %>%
+  ggplot() +
+  geom_smooth(aes(x=speed, y=Pct, color=Severity, weight=totbyspeed), se=FALSE, method='lm')+
+  geom_point(aes(x=speed, y=Pct, color=Severity))+
+  scale_color_manual("Severity",values = c("gray", "green", "turquoise3", "purple", "orange", "red"), labels=c("Unknown", "Not Injured", "Possible Injury", "Non-Incapacitating", "Suspected Serious Injury", "Fatal")) +
+labs(title = "Pedestrian/Auto Collisions in Harris County, 2010-2017", 
+       subtitle = "Severity Percentage versus Speed, weighted fit", 
+       caption = caption) +
+    xlab("Speed (mph)")+
+    ylab("Severity Percentage") +
+  theme(legend.position = "right")  
+  
+
+```
+
+
+## Does the number of incidents predict fatalities?
+
+Do you prioritize improving locations where there has been a fatality? Or do you prioritize by number of incidents - even if none of them were serious. To get a handle on this, let's look at whether or not the number of incidents is related to the number of serious incidents.  
+Looks pretty ambiguous to me. Note that for greater than about 6 incidents, the statistics are pretty poor, as this table illustrates.
+```{r, echo=FALSE, results='asis'}
+mytable <- citypedslatlng %>% group_by(latlon) %>% summarise(incidents_per_location=n()) %>% group_by(incidents_per_location) %>% summarise(total_incidents=sum(incidents_per_location)) 
+
+print(xtable(mytable), type="html")
+```
 
 ```{r Number of incidents vs seriousness, echo=FALSE}
  
@@ -234,18 +287,46 @@ badspots <- citypedslatlng %>%
   
 badspots$Severity <-  factor(badspots$Severity, levels=c("unk", "okay", "maybe", "injury", "serious", "fatal"))
 
-badspots %>%
+badspots %>% 
   ggplot() +
   geom_point(aes(x=total, y=SumSevere, color=Severity)) +
   #geom_bar(aes(x=total, fill=Severity), stat='identity', position="dodge") 
-  geom_smooth(aes(x=total, y=SumSevere, color=Severity), method='lm', formula=y~x, se=TRUE)  +
+  geom_smooth(aes(x=total, y=SumSevere, color=Severity, weight=totalsum), method='lm', formula=y~x, se=TRUE)  +
   xlab("Number of Incidents") +
   ylab("Percent") +
-  scale_color_manual("Severity",values = c("gray", "green", "turquoise3", "purple", "orange", "red"), labels=c("UNKNOWN", "NOT INJURED", "POSSIBLE INJURY", "NON-INCAPACITATING", "SUSPECTED SERIOUS INJURY", "FATAL")) +
+  scale_color_manual("Severity",values = c("gray", "green", "turquoise3", "purple", "orange", "red"), labels=c("Unknown", "Not Injured", "Possible Injury", "Non-Incapacitating", "Suspected Serious Injury", "Fatal")) +
   labs(title = "Pedestrian/Auto Collisions, Houston City Streets, 2010-2017", 
        subtitle = "Severity fraction vs. number of incidents - how dangerous is a given spot?", 
        caption = caption) +
   theme(legend.position = "right")
+
+
+```
+
+## What about Jaywalking?
+
+Is there a pattern related to where the incident took place? At an intersection, or somewhere else? Generally, pedestrians are supposed to cross streets at corners - perhaps that is a factor?  
+It looks like nearly half of the incidents may be related to jay-walking! Now, that does not of necessity place blame on the victim. There are many locations which are far from an intersection, and due to poor design, pedestrians are encouraged by the design to cross where they should not. 
+
+```{r intersections, echo=FALSE}
+
+citypeds %>%
+  ggplot(aes(x=Intersection)) +
+  geom_bar(fill = "darkorchid4") +
+  geom_label(aes(label=..count..), stat='count', size = 3) +
+  labs(title = "Pedestrian/Auto Collisions in Harris County, 2010-2017", 
+       subtitle = "Incidents Relative to Intersections", 
+       caption = caption) +
+    xlab("Location Type")+
+    ylab("Number of Incidents") +
+  theme(legend.position = "bottom")
+
+```
+
+## How does the type of crossing relate to the injury severity?
+
+```{r crossing vs severity, echo=FALSE}
+
 
 
 ```

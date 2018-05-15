@@ -346,7 +346,7 @@ citypeds %>% filter(Intersection!="Not Reported") %>%
 
 ## Another look at location type and injury severity
 
-Here we see quite clearly - after consolidating "Intersection Related" and "Intersection" together - that not being at an intersection is much more dangerous. The likelihood of serious injury or death is about 50% greater at Non-Intersections.
+Here we see quite clearly - after consolidating "Intersection Related" and "Intersection" together - that not being at an intersection is much more dangerous. The likelihood of serious injury or death is about 50% greater at non-intersections.
 
 ```{r Probability of injury vs location, echo=FALSE}
 
@@ -374,6 +374,123 @@ citypeds %>%
 
 ```
 
+## What about speed at non-intersections?
+
+We saw that speed versus severity did not show a tremendously robust result, but perhaps if we look only at the non-intersection data. After all, near an intersection, cars will often be going much slower than the speed limit.  
+I see some effect, it does enhance the tradeoff between non-incapacitating injuries and serious injuries.
+
+```{r speed vs severity for non-intersections, echo=FALSE}
+
+#   round speed to nearest 5 mph
+
+citypeds %>% mutate(speed=as.integer((Crash_Speed_Limit+2.5)/5)*5) %>%
+  filter(speed>0) %>%
+  filter(Intersection=="Non-Intersection") %>%
+  group_by(speed) %>%
+  summarise(totbyspeed=n(),
+            fatal=sum(Crash_Sev_ID==4),             
+            serious=sum(Crash_Sev_ID==1),
+            injury=sum(Crash_Sev_ID==2),
+            maybe=sum(Crash_Sev_ID==3),
+            okay=sum(Crash_Sev_ID==5),
+            unk=sum(Crash_Sev_ID==0)) %>%
+  mutate(fatalpct=fatal/totbyspeed*100,
+         seriouspct=serious/totbyspeed*100,
+         injurypct=injury/totbyspeed*100,
+         maybepct=maybe/totbyspeed*100,
+         okaypct=okay/totbyspeed*100,
+         unkpct=unk/totbyspeed*100
+         ) %>%
+  select(speed, totbyspeed, fatalpct:unkpct) %>%
+  rename(Fatal=fatalpct, Serious_Injury=seriouspct,  Non_Incapacitating=injurypct, Possible_Injury=maybepct, Not_Injured=okaypct, Unknown=unkpct) %>%
+  gather(Severity, Pct, Fatal:Unknown) %>%
+  ggplot() +
+  geom_smooth(aes(x=speed, y=Pct, color=Severity, weight=totbyspeed), se=FALSE, method='lm')+
+  geom_point(aes(x=speed, y=Pct, color=Severity))+
+  scale_color_manual("Severity",values = c("gray", "green", "turquoise3", "purple", "orange", "red"), labels=c("Unknown", "Not Injured", "Possible Injury", "Non-Incapacitating", "Suspected Serious Injury", "Fatal")) +
+labs(title = "Pedestrian/Auto Collisions in Harris County, 2010-2017", 
+       subtitle = "Severity Percentage versus Speed, weighted fit, Non-Intersection locations only", 
+       caption = caption) +
+    xlab("Speed (mph)")+
+    ylab("Severity Percentage") +
+  theme(legend.position = "right")  
+  
+
+
+
+```
+
+## Subset exploration - Injury vs. Time of Day
+
+It appears that less serious injuries largely occur during rush hour - 6-8 AM and 3-7 PM - while serious injuries and fatalities tend to occur later in the day, more like 6-10 PM. Is the interesting peak in fatalities at 6 AM due to less traffic, so cars can travel faster at that hour than later in the day?
+
+```{r Subset for City Streets TOD, echo=FALSE}
+
+citypeds %>% mutate(HourOfDay=hour(Crash_DateTime)) %>%
+  mutate(Daynum=wday(Crash_Date)) %>%
+  mutate(MonOfYear=month(Crash_Date)) %>%
+  filter(Severity!="Unknown") %>%
+  select(Severity, HourOfDay, Daynum, MonOfYear) %>%
+  ggplot(aes(x=HourOfDay)) +
+  #geom_bar(aes(y = (..count..)/sum(..count..), fill=Severity)) +
+  geom_bar(aes(y = ..prop.., fill=Severity), stat="count") +
+  facet_grid(Severity~.) +
+  scale_y_continuous(labels=scales::percent) +
+  scale_fill_manual(values = c("green", "turquoise3", "purple", "orange", "red")) +
+labs(title = "Pedestrian/Auto Collisions in Harris County, 2010-2017", 
+       subtitle = "Severity versus Time of Day", 
+       caption = caption) +
+    xlab("Hour of Day")+
+    ylab("Relative Frequencies") +
+  theme(legend.position = "right")  
+  
+```
+
+## Subset exploration - Injury vs. Day of Week
+
+All of the injury categories mirror each other, showing lower values on the weekend and higher values during the week. Except fatalities. There the pattern is reversed, with the largest percentages being on Saturday and Sunday. Is that due to the 2 AM spike?
+
+```{r Subset for City Streets DOW, echo=FALSE}
+
+citypeds %>% mutate(HourOfDay=hour(Crash_DateTime)) %>%
+  mutate(Daynum=wday(Crash_Date)) %>%
+  mutate(MonOfYear=month(Crash_Date)) %>%
+  filter(Severity!="Unknown") %>%
+  select(Severity, HourOfDay, Daynum, MonOfYear) %>%
+  ggplot(aes(x=wday(Daynum, label=TRUE))) +
+  #geom_bar(aes(y = (..count..)/sum(..count..), fill=Severity)) +
+  geom_bar(aes(group=factor(0), y = ..prop.., fill=Severity), stat="count") +
+  facet_grid(Severity~.) +
+  scale_y_continuous(labels=scales::percent) +
+  scale_fill_manual(values = c("green", "turquoise3", "purple", "orange", "red")) +
+labs(title = "Pedestrian/Auto Collisions in Harris County, 2010-2017", 
+       subtitle = "Severity versus Day of Week", 
+       caption = caption) +
+    xlab("Day of Week")+
+    ylab("Relative Frequencies") +
+  theme(legend.position = "right")  
+  
+```
+
+## Exploration of Fatalities by Day and Hour
+
+The numbers are getting small, so the statistics are getting suspect, but it does appear tha the Sunday spike in fatalities is dominated by the early hours - Saturday night really. The Saturday spike has a small increase at 2 AM, but also a significant late night component. I would guess that alcohol is involved - either for the driver or the pedestrian, or both.
+
+```{r Fatalities by Day and Hour, echo=FALSE, message=FALSE}
+
+citypeds %>% mutate(Day=wday(Crash_DateTime, label=TRUE), Hour=hour(Crash_DateTime)) %>%
+  filter(Severity=="Fatal") %>%
+  ggplot() +
+  geom_bar(aes(x=Hour), fill = "darkorchid4") +
+  facet_grid(Day~.) +
+  xlab("Hour") +
+  scale_x_continuous(breaks=seq(0,23,2)) +
+  labs(title = "Pedestrian/Auto Collisions, Houston City Streets, 2010-2017", 
+       subtitle = "Fatalities, Day and Hour", 
+       caption = caption) +
+  theme(legend.position = "bottom")
+            
+```
 
 ## Where are most fatalities?
 

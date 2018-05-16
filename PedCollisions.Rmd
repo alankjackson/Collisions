@@ -45,6 +45,29 @@ knitr::opts_chunk$set(echo = TRUE)
 
 Based on the [TxDOT](https://cris.dot.state.tx.us/public/Query/app/public/welcome) data from 2010 to 2017, I have analyzed incidents where pedestrians got hit by cars. First we will begin with some general statistics, and then bore down to some more specific items.  
 
+## CDC Data
+
+From the website for the [Centers for Disease Control](https://www.cdc.gov/motorvehiclesafety/pedestrian_safety/index.html), we have the following information regrading Pedestrian incidents:  
+Who is most at risk?  
+
+Older adults  
+
+Pedestrians ages 65 and older accounted for 19% of all pedestrian deaths and an estimated 13% of all pedestrians injured in 2015.  
+
+Children  
+
+In 2015, one in every five children under the age of 15 who were killed in traffic crashes were pedestrians.  
+
+Drivers and pedestrians who are alcohol-impaired  
+
+Almost half (48%) of crashes that resulted in pedestrian deaths involved alcohol for the driver or the pedestrian. One in every three (34%) of fatal pedestrian crashes involved a pedestrian with a blood alcohol concentration (BAC) of at least 0.08 grams per deciliter (g/dL) and 15% involved a driver with a BAC of at least 0.08 g/dL.  
+
+Additional Risk Factors  
+
+Additionally, higher vehicle speeds increase both the likelihood of a pedestrian being struck by a car and the severity of injury.  
+
+Most pedestrian deaths occur in urban areas, non-intersection locations, and at night.
+
 ## Injury Distribution
 
 The state has six categories of injury (if we include "Unknown"). Somewhat surprisingly, there are about 100 pedestrian fatalies per year in the county. And about 3 incidents per day, on average.
@@ -225,12 +248,12 @@ citypeds %>% mutate(speed=as.integer((Crash_Speed_Limit+2.5)/5)*5) %>%
             maybe=sum(Crash_Sev_ID==3),
             okay=sum(Crash_Sev_ID==5),
             unk=sum(Crash_Sev_ID==0)) %>%
-  mutate(fatalpct=fatal/totbyspeed*100,
-         seriouspct=serious/totbyspeed*100,
-         injurypct=injury/totbyspeed*100,
-         maybepct=maybe/totbyspeed*100,
-         okaypct=okay/totbyspeed*100,
-         unkpct=unk/totbyspeed*100
+  mutate(fatalpct=fatal/totbyspeed,
+         seriouspct=serious/totbyspeed,
+         injurypct=injury/totbyspeed,
+         maybepct=maybe/totbyspeed,
+         okaypct=okay/totbyspeed,
+         unkpct=unk/totbyspeed
          ) %>%
   select(speed, totbyspeed, fatalpct:unkpct) %>%
   rename(Fatal=fatalpct, Serious_Injury=seriouspct,  Non_Incapacitating=injurypct, Possible_Injury=maybepct, Not_Injured=okaypct, Unknown=unkpct) %>%
@@ -244,6 +267,7 @@ labs(title = "Pedestrian/Auto Collisions in Harris County, 2010-2017",
        caption = caption) +
     xlab("Speed (mph)")+
     ylab("Severity Percentage") +
+    scale_y_continuous(labels=scales::percent) +
   theme(legend.position = "right")  
   
 
@@ -294,6 +318,7 @@ badspots %>%
   geom_smooth(aes(x=total, y=SumSevere, color=Severity, weight=totalsum), method='lm', formula=y~x, se=TRUE)  +
   xlab("Number of Incidents") +
   ylab("Percent") +
+  scale_y_continuous(labels=scales::percent) +
   scale_color_manual("Severity",values = c("gray", "green", "turquoise3", "purple", "orange", "red"), labels=c("Unknown", "Not Injured", "Possible Injury", "Non-Incapacitating", "Suspected Serious Injury", "Fatal")) +
   labs(title = "Pedestrian/Auto Collisions, Houston City Streets, 2010-2017", 
        subtitle = "Severity fraction vs. number of incidents - how dangerous is a given spot?", 
@@ -357,7 +382,7 @@ citypeds %>%
   mutate(Intersection=gsub(" ", "_", Intersection, fixed=TRUE)) %>%
   mutate(Intersection=gsub("-", "_", Intersection, fixed=TRUE)) %>%
   spread(Intersection,total) %>%
-  mutate(mysum=0.01*(Intersection + Intersection_Related + Non_Intersection)) %>%
+  mutate(mysum=(Intersection + Intersection_Related + Non_Intersection)) %>%
   mutate(Intersection=Intersection + Intersection_Related,
   Intersection=Intersection/mysum, Non_Intersection=Non_Intersection/mysum) %>%
   select(Severity, Intersection, Non_Intersection) %>%
@@ -367,6 +392,7 @@ citypeds %>%
    scale_fill_manual("Severity",values = c("green", "turquoise3", "purple", "orange", "red")) +
   xlab("Location Type")+
   ylab("Percent of Cases")+
+  scale_y_continuous(labels=scales::percent) +
   labs(title = "Pedestrian/Auto Collisions in Harris County, 2010-2017", 
        subtitle = "Severity vs. Location Type", 
        caption = caption) +
@@ -394,12 +420,12 @@ citypeds %>% mutate(speed=as.integer((Crash_Speed_Limit+2.5)/5)*5) %>%
             maybe=sum(Crash_Sev_ID==3),
             okay=sum(Crash_Sev_ID==5),
             unk=sum(Crash_Sev_ID==0)) %>%
-  mutate(fatalpct=fatal/totbyspeed*100,
-         seriouspct=serious/totbyspeed*100,
-         injurypct=injury/totbyspeed*100,
-         maybepct=maybe/totbyspeed*100,
-         okaypct=okay/totbyspeed*100,
-         unkpct=unk/totbyspeed*100
+  mutate(fatalpct=fatal/totbyspeed,
+         seriouspct=serious/totbyspeed,
+         injurypct=injury/totbyspeed,
+         maybepct=maybe/totbyspeed,
+         okaypct=okay/totbyspeed,
+         unkpct=unk/totbyspeed
          ) %>%
   select(speed, totbyspeed, fatalpct:unkpct) %>%
   rename(Fatal=fatalpct, Serious_Injury=seriouspct,  Non_Incapacitating=injurypct, Possible_Injury=maybepct, Not_Injured=okaypct, Unknown=unkpct) %>%
@@ -413,6 +439,7 @@ labs(title = "Pedestrian/Auto Collisions in Harris County, 2010-2017",
        caption = caption) +
     xlab("Speed (mph)")+
     ylab("Severity Percentage") +
+  scale_y_continuous(labels=scales::percent) +
   theme(legend.position = "right")  
   
 
@@ -491,6 +518,174 @@ citypeds %>% mutate(Day=wday(Crash_DateTime, label=TRUE), Hour=hour(Crash_DateTi
   theme(legend.position = "bottom")
             
 ```
+
+## Subset exploration - Injury vs. Month of Year
+
+All of the injury categories mirror each other, showing lower values in the summer and higher values in the spring and fall. 
+Death takes a holiday? This may be a measurement of more pedestrians on the streets during good weather. It may in part also be due to school children not walking to school in the summer. In support of that hypothesis, December is also low.
+
+```{r Subset for City Streets Severity vs Month of Year, echo=FALSE}
+
+citypeds %>% mutate(HourOfDay=hour(Crash_DateTime)) %>%
+  mutate(Daynum=wday(Crash_Date)) %>%
+  mutate(MonOfYear=month(Crash_Date, label=TRUE, abbr=TRUE)) %>%
+  filter(Severity!="Unknown") %>%
+  select(Severity, HourOfDay, Daynum, MonOfYear) %>%
+  ggplot(aes(x=MonOfYear)) +
+  #geom_bar(aes(y = (..count..)/sum(..count..), fill=Severity)) +
+  geom_bar(aes(group=factor(0), y = ..prop.., fill=Severity), stat="count") +
+  facet_grid(Severity~.) +
+  scale_y_continuous(labels=scales::percent) +
+  scale_fill_manual(values = c("green", "turquoise3", "purple", "orange", "red")) +
+labs(title = "Pedestrian/Auto Collisions in Harris County, 2010-2017", 
+       subtitle = "Severity versus Month of Year", 
+       caption = caption) +
+    xlab("Month of Year")+
+    ylab("Relative Frequencies") +
+  theme(legend.position = "right")  
+  
+```
+
+## Subset exploration - Injury vs. Date
+
+All of the injury categories mirror each other, showing an increase starting around 2012, and leveing off around 2013-2014, except for "not injured", which shows no change.
+It would be interesting to compare with other cities - is this a national trend? Is it related to the economy?  
+According to the [Governors Highway Safety Association](https://www.ghsa.org/resources/spotlight-peds17), pedestrian fatalities have been rising since 2009, by 10%-20% per year nationwide. So Houston is not immune from this trend.
+
+
+```{r Subset for City Streets Severity vs Date, echo=FALSE, message=FALSE}
+
+citypeds %>% 
+  filter(Severity!="Unknown") %>%
+  select(Severity, Crash_Date) %>%
+  mutate(ByWeek=floor_date(Crash_Date, "month")) %>%
+  group_by(ByWeek, Severity) %>%
+  summarise(WeeklyTotal=n()) %>%
+  mutate(Percent=WeeklyTotal/sum(WeeklyTotal)) %>%
+  ggplot() +
+  geom_point(aes(x=ByWeek, y=WeeklyTotal, color=Severity)) +
+  geom_smooth(aes(x=ByWeek, y=WeeklyTotal, color=Severity))  +
+  facet_grid(Severity~., scales="free") +
+  scale_color_manual("Severity",values = c("green", "turquoise3", "purple", "orange", "red"), labels=c("Not Injured", "Possible Injury", "Non-Incapacitating", "Suspected Serious Injury", "Fatal")) +
+labs(title = "Pedestrian/Auto Collisions in Harris County, 2010-2017", 
+       subtitle = "Severity versus Date", 
+       caption = caption) +
+    xlab("Year")+
+    ylab("Number of Incidents per Month") +
+  theme(legend.position = "right")  
+  
+```
+
+## Brief Interlude to consider Parking Lots
+
+Let's take a break from city streets to consider Non-Trafficways.  
+
+## Non-Trafficways, Time of Day
+
+Not surprisingly, parking lots are especially dangerous when most used - in the middle of the day.
+
+```{r Subset for Parking Lots TOD, echo=FALSE}
+
+parkingpeds <- peds %>% filter(RoadType=="Non Trafficway")
+parkingpeds %>% mutate(HourOfDay=hour(Crash_DateTime)) %>%
+  mutate(Daynum=wday(Crash_Date)) %>%
+  mutate(MonOfYear=month(Crash_Date)) %>%
+  filter(Severity!="Unknown") %>%
+  select(Severity, HourOfDay, Daynum, MonOfYear) %>%
+  ggplot(aes(x=HourOfDay)) +
+  geom_bar(aes(y = ..prop.., fill=Severity), stat="count") +
+  facet_grid(Severity~.) +
+  scale_y_continuous(labels=scales::percent) +
+  scale_fill_manual(values = c("green", "turquoise3", "purple", "orange", "red")) +
+labs(title = "Pedestrian/Auto Collisions in Harris County, 2010-2017", 
+       subtitle = "Non-Trafficway, Severity versus Time of Day", 
+       caption = caption) +
+    xlab("Hour of Day")+
+    ylab("Relative Frequencies") +
+  theme(legend.position = "right")  
+  
+```
+
+## Non-Trafficways, Day of Week
+
+Hard to say that there is much dependence on day of week. Note that the numbers of fatalities are small, so for that row we may be seeing statistical fluctuation.
+
+```{r Subset for Parking Lots DOW, echo=FALSE}
+
+parkingpeds %>% mutate(HourOfDay=hour(Crash_DateTime)) %>%
+  mutate(Daynum=wday(Crash_Date)) %>%
+  mutate(MonOfYear=month(Crash_Date)) %>%
+  filter(Severity!="Unknown") %>%
+  select(Severity, HourOfDay, Daynum, MonOfYear) %>%
+  ggplot(aes(x=wday(Daynum, label=TRUE))) +
+  #geom_bar(aes(y = (..count..)/sum(..count..), fill=Severity)) +
+  geom_bar(aes(group=factor(0), y = ..prop.., fill=Severity), stat="count") +
+  facet_grid(Severity~.) +
+  scale_y_continuous(labels=scales::percent) +
+  scale_fill_manual(values = c("green", "turquoise3", "purple", "orange", "red")) +
+labs(title = "Pedestrian/Auto Collisions in Harris County, 2010-2017", 
+       subtitle = "Non-Trafficway, Severity versus Day of Week", 
+       caption = caption) +
+    xlab("Day of Week")+
+    ylab("Relative Frequencies") +
+  theme(legend.position = "right")  
+  
+```
+
+
+## Non-Trafficways, Month of Year
+
+No obvious patterns to me.
+
+```{r Subset for Parking Lots Severity vs Month of Year, echo=FALSE}
+
+parkingpeds %>% mutate(HourOfDay=hour(Crash_DateTime)) %>%
+  mutate(Daynum=wday(Crash_Date)) %>%
+  mutate(MonOfYear=month(Crash_Date, label=TRUE, abbr=TRUE)) %>%
+  filter(Severity!="Unknown") %>%
+  select(Severity, HourOfDay, Daynum, MonOfYear) %>%
+  ggplot(aes(x=MonOfYear)) +
+  #geom_bar(aes(y = (..count..)/sum(..count..), fill=Severity)) +
+  geom_bar(aes(group=factor(0), y = ..prop.., fill=Severity), stat="count") +
+  facet_grid(Severity~.) +
+  scale_y_continuous(labels=scales::percent) +
+  scale_fill_manual(values = c("green", "turquoise3", "purple", "orange", "red")) +
+labs(title = "Pedestrian/Auto Collisions in Harris County, 2010-2017", 
+       subtitle = "Non-Trafficway, Severity versus Month of Year", 
+       caption = caption) +
+    xlab("Month of Year")+
+    ylab("Relative Frequencies") +
+  theme(legend.position = "right")  
+  
+```
+
+## Non-Trafficways, Date
+
+Interestingly, we see the same trend in the non-trafficway data as in the city street data. Is this related to cell-phone distracted pedestrians? Improved economy? Hard to say.
+
+```{r Subset for Parking Lots Severity vs Date, echo=FALSE, message=FALSE}
+
+parkingpeds %>% 
+  filter(Severity!="Unknown") %>%
+  select(Severity, Crash_Date) %>%
+  mutate(ByWeek=floor_date(Crash_Date, "month")) %>%
+  group_by(ByWeek, Severity) %>%
+  summarise(WeeklyTotal=n()) %>%
+  mutate(Percent=WeeklyTotal/sum(WeeklyTotal)) %>%
+  ggplot() +
+  geom_point(aes(x=ByWeek, y=WeeklyTotal, color=Severity)) +
+  geom_smooth(aes(x=ByWeek, y=WeeklyTotal, color=Severity))  +
+  facet_grid(Severity~., scales="free") +
+  scale_color_manual("Severity",values = c("green", "turquoise3", "purple", "orange", "red"), labels=c("Not Injured", "Possible Injury", "Non-Incapacitating", "Suspected Serious Injury", "Fatal")) +
+labs(title = "Pedestrian/Auto Collisions in Harris County, 2010-2017", 
+       subtitle = "Non-Trafficway, Severity versus Date", 
+       caption = caption) +
+    xlab("Year")+
+    ylab("Number of Incidents per Month") +
+  theme(legend.position = "right")  
+  
+```
+
 
 ## Where are most fatalities?
 

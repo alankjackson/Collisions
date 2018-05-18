@@ -72,7 +72,7 @@ Most pedestrian deaths occur in urban areas, non-intersection locations, and at 
 
 The state has six categories of injury (if we include "Unknown"). Somewhat surprisingly, there are about 100 pedestrian fatalies per year in the county. And about 3 incidents per day, on average.
 
-```{r overall, echo=FALSE}
+```{r overall}
 
 peds %>% 
   ggplot(aes(x=Severity)) +
@@ -80,8 +80,7 @@ peds %>%
   geom_label(aes(label=..count..), stat='count', size = 3) +
   coord_flip() +
   labs(title = "Pedestrian/Auto Collisions in Harris County, 2010-2017", 
-       caption = caption)+
-  theme(legend.position = "bottom")
+       caption = caption)
 ```
 
 ## Injuries as a function of road type
@@ -91,7 +90,7 @@ As the plot indicates, injuries on a highway are much more likely to be fatal, b
 
 But what the heck is this "non trafficway" category of road? I think it must mostly be parking lots, with a few driveways thrown in.
 
-```{r Injuries vs. RoadType, echo=FALSE}
+```{r Injuries vs. RoadType}
 peds %>% ggplot() +
   geom_bar(aes(x=RoadType, fill=Severity), position="dodge" ) +
   coord_flip() +
@@ -117,11 +116,10 @@ Let's consider what time of day these incidents occur. I have heard it proposed 
 
 Doesn't look like impairment is a major factor. It appears that the incidents peak during rush hour. Well, there is a minor peak at 2 AM when the bars close. And an intriguing jump at 3 PM. Is that related to school letting out? I'll have to look at that later.
 
-```{r city street analysis, echo=FALSE}
+```{r city street analysis}
 
 citypeds <- peds %>% filter(RoadType=="City Street")
 citypeds$Intersection <- as.factor(citypeds$Intersection)
-#stp <- stamp_time("12:59") # set up template for hh:mm
 
 citypeds %>% mutate(HourOfDay=hour(citypeds$Crash_DateTime)) %>%
   ggplot() +
@@ -129,8 +127,7 @@ citypeds %>% mutate(HourOfDay=hour(citypeds$Crash_DateTime)) %>%
   xlab("Hour of Day")+
   labs(title = "Pedestrian/Auto Collisions, Houston City Streets, 2010-2017", 
        subtitle = "Hour of Day", 
-       caption = caption) +
-  theme(legend.position = "bottom")
+       caption = caption) 
        
 ```
 
@@ -138,7 +135,7 @@ citypeds %>% mutate(HourOfDay=hour(citypeds$Crash_DateTime)) %>%
 
 How about day of the week? Not surprisingly, Sunday is the low day, and Saturday is rather low as well. Friday is the most dangerous day. Is that due to everyone being in a hurry? Drinking? Something else? Later we'll examine the weekend effect with respect to location. Perhaps the drop represents not many people downtown on the weekend?
 
-```{r Day of Week, echo=FALSE}
+```{r Day of Week}
 
 citypeds %>% mutate(Daynum=wday(Crash_Date)) %>%
   ggplot(aes(x=wday(Daynum, label=TRUE))) +
@@ -146,8 +143,7 @@ citypeds %>% mutate(Daynum=wday(Crash_Date)) %>%
   xlab("Day of Week")+
   labs(title = "Pedestrian/Auto Collisions, Houston City Streets, 2010-2017", 
        subtitle = "Day of Week", 
-       caption = caption) +
-  theme(legend.position = "bottom")
+       caption = caption) 
         
 ```
 
@@ -156,21 +152,19 @@ citypeds %>% mutate(Daynum=wday(Crash_Date)) %>%
 
 There is a strong indication that there are fewer incidents during the summer than other times. Is that related to school being out? People on vacation? Maybe drivers are mellower during the summer? Certainly life is less hectic for commuters with kids - and the hours that people commute tend to change a bit with the season. But the large week-to-week scatter outside summer is puzzling. I have no idea what that means. 
 
-```{r Time of Year, echo=FALSE, message=FALSE}
+```{r Time of Year, message=FALSE}
 
 citypeds %>% mutate(WkOfYear=as.Date(paste0("2000-",month(floor_date(Crash_Date, "week")),"-",day(floor_date(Crash_Date, "week")), "%Y-%m-%d"))) %>%
   group_by(WkOfYear) %>%
   summarise(WeeklyTotal=n()) %>%
-  ggplot() +
-  #geom_bar(aes(x=WkOfYear), fill = "darkorchid4") +
-  geom_point(aes(x=WkOfYear, y=WeeklyTotal)) +
-  geom_smooth(aes(x=WkOfYear, y=WeeklyTotal))  +
+  ggplot(aes(x=WkOfYear, y=WeeklyTotal)) +
+  geom_point() +
+  geom_smooth()  +
   scale_x_date(date_labels = "%b")+
   xlab("Month of Year") +
   labs(title = "Pedestrian/Auto Collisions, Houston City Streets, 2010-2017", 
        subtitle = "Month of Year", 
-       caption = caption) +
-  theme(legend.position = "bottom")
+       caption = caption) 
             
 ```
 
@@ -178,20 +172,19 @@ citypeds %>% mutate(WkOfYear=as.Date(paste0("2000-",month(floor_date(Crash_Date,
 
 Sadly, it appears that the rate has increased significantly since 2010, rising from around 10 incidents per week to 15 by 2013. The good news is that it appears that the rate has leveled off since then, but no discernable improvement.
 
-```{r Long Term Trends, echo=FALSE, message=FALSE}
+```{r Long Term Trends, message=FALSE}
 
 citypeds %>% mutate(ByWeek=floor_date(Crash_Date, "week")) %>%
   group_by(ByWeek) %>%
   summarise(WeeklyTotal=n()) %>%
-  ggplot() +
-  geom_point(aes(x=ByWeek, y=WeeklyTotal)) +
-  geom_smooth(aes(x=ByWeek, y=WeeklyTotal))  +
+  ggplot(aes(x=ByWeek, y=WeeklyTotal)) +
+  geom_point() +
+  geom_smooth()  +
   xlab("Date") +
   ylab("Total Incidents per Week") +
   labs(title = "Pedestrian/Auto Collisions, Houston City Streets, 2010-2017", 
        subtitle = "Weekly Totals", 
-       caption = caption) +
-  theme(legend.position = "bottom")
+       caption = caption) 
             
 ```
 
@@ -200,7 +193,7 @@ citypeds %>% mutate(ByWeek=floor_date(Crash_Date, "week")) %>%
 The worst is a location that has racked up 13 incidents in 7 years - about one incident every 6 months. 260 locations have seen two incidents, 81 locations have seen three. If one were looking for a way to prioritize work, this might be a good start.
 
 
-```{r Where are the worst spots for accidents, echo=FALSE}
+```{r Where are the worst spots for accidents}
 
 citypedslatlng <- citypeds %>% 
   filter(!is.na(Latitude)) %>%
@@ -211,7 +204,6 @@ badspots <- citypedslatlng %>%
   summarise(total=n()) %>%
   filter(total>1)
 
-
 badspots %>% 
   ggplot(aes(x=total)) +
   geom_bar(fill = "darkorchid4") +
@@ -220,11 +212,7 @@ badspots %>%
        subtitle = "Number of locations with more than one incident", 
        caption = caption) +
     xlab("Number of Incidents")+
-    ylab("Number of locations") +
-  theme(legend.position = "bottom")
-
-#badspots <- left_join(badspots, citypedslatlng, by="latlon")
-
+    ylab("Number of locations") 
 
 ```
 
@@ -234,7 +222,7 @@ What controls how serious an incident turns out to be? Most probably the speed o
 
 Not as clear as one might think. Certainly serious injuries rise with speed, and slight (non-incapacitating) injuries fall, so that fits with expectations. But not injured stays flat - surprisingly. Fatal also is flat - but the numbers are so small that that may not be significant.
 
-```{r Speed vs Severity, echo=FALSE}
+```{r Speed vs Severity}
 
 #   round speed to nearest 5 mph
 
@@ -278,13 +266,20 @@ labs(title = "Pedestrian/Auto Collisions in Harris County, 2010-2017",
 
 Do you prioritize improving locations where there has been a fatality? Or do you prioritize by number of incidents - even if none of them were serious. To get a handle on this, let's look at whether or not the number of incidents is related to the number of serious incidents.  
 Looks pretty ambiguous to me. Note that for greater than about 6 incidents, the statistics are pretty poor, as this table illustrates.
-```{r, echo=FALSE, results='asis'}
-mytable <- citypedslatlng %>% group_by(latlon) %>% summarise(incidents_per_location=n()) %>% group_by(incidents_per_location) %>% summarise(total_incidents=sum(incidents_per_location)) 
+```{r, results='asis'}
+mytable <- citypedslatlng %>% 
+  group_by(latlon) %>%
+  summarise(incidents_per_location=n()) %>%
+  group_by(incidents_per_location) %>%
+  summarise(total_incidents=sum(incidents_per_location)) 
 
 print(xtable(mytable), type="html")
 ```
 
-```{r Number of incidents vs seriousness, echo=FALSE}
+    
+
+
+```{r Number of incidents vs seriousness}
  
 badspots <- citypedslatlng %>%
   group_by(latlon) %>%
@@ -333,7 +328,7 @@ badspots %>%
 Is there a pattern related to where the incident took place? At an intersection, or somewhere else? Generally, pedestrians are supposed to cross streets at corners - perhaps that is a factor?  
 It looks like nearly half of the incidents may be related to jaywalking! Now, that does not of necessity place blame on the victim. There are many locations which are far from an intersection, and due to poor design, pedestrians are encouraged by the design to cross where they should not. 
 
-```{r intersections, echo=FALSE}
+```{r intersections}
 
 citypeds %>%
   ggplot(aes(x=Intersection)) +
@@ -343,8 +338,7 @@ citypeds %>%
        subtitle = "Incidents Relative to Intersections", 
        caption = caption) +
     xlab("Location Type")+
-    ylab("Number of Incidents") +
-  theme(legend.position = "bottom")
+    ylab("Number of Incidents") 
 
 ```
 
@@ -352,7 +346,7 @@ citypeds %>%
 
 It looks bad to not cross at an intersection. Ceertainly away from an intersection an automobile is more likely to be traveling at the speed limit (or above), and also is not likely to expect to see a pedestrian.
 
-```{r crossing vs severity, echo=FALSE}
+```{r crossing vs severity}
 
 citypeds %>% filter(Intersection!="Not Reported") %>%
   ggplot() +
@@ -373,7 +367,7 @@ citypeds %>% filter(Intersection!="Not Reported") %>%
 
 Here we see quite clearly - after consolidating "Intersection Related" and "Intersection" together - that not being at an intersection is much more dangerous. The likelihood of serious injury or death is about 50% greater at non-intersections.
 
-```{r Probability of injury vs location, echo=FALSE}
+```{r Probability of injury vs location}
 
 citypeds %>%
   filter(Severity!="Unknown") %>%
@@ -405,7 +399,7 @@ citypeds %>%
 We saw that speed versus severity did not show a tremendously robust result, but perhaps if we look only at the non-intersection data. After all, near an intersection, cars will often be going much slower than the speed limit.  
 I see some effect, it does enhance the tradeoff between non-incapacitating injuries and serious injuries.
 
-```{r speed vs severity for non-intersections, echo=FALSE}
+```{r speed vs severity for non-intersections}
 
 #   round speed to nearest 5 mph
 
@@ -451,7 +445,7 @@ labs(title = "Pedestrian/Auto Collisions in Harris County, 2010-2017",
 
 It appears that less serious injuries largely occur during rush hour - 6-8 AM and 3-7 PM - while serious injuries and fatalities tend to occur later in the day, more like 6-10 PM. Is the interesting peak in fatalities at 6 AM due to less traffic, so cars can travel faster at that hour than later in the day?
 
-```{r Subset for City Streets TOD, echo=FALSE}
+```{r Subset for City Streets TOD}
 
 citypeds %>% mutate(HourOfDay=hour(Crash_DateTime)) %>%
   mutate(Daynum=wday(Crash_Date)) %>%
@@ -459,7 +453,6 @@ citypeds %>% mutate(HourOfDay=hour(Crash_DateTime)) %>%
   filter(Severity!="Unknown") %>%
   select(Severity, HourOfDay, Daynum, MonOfYear) %>%
   ggplot(aes(x=HourOfDay)) +
-  #geom_bar(aes(y = (..count..)/sum(..count..), fill=Severity)) +
   geom_bar(aes(y = ..prop.., fill=Severity), stat="count") +
   facet_grid(Severity~.) +
   scale_y_continuous(labels=scales::percent) +
@@ -477,7 +470,7 @@ labs(title = "Pedestrian/Auto Collisions in Harris County, 2010-2017",
 
 All of the injury categories mirror each other, showing lower values on the weekend and higher values during the week. Except fatalities. There the pattern is reversed, with the largest percentages being on Saturday and Sunday. Is that due to the 2 AM spike?
 
-```{r Subset for City Streets DOW, echo=FALSE}
+```{r Subset for City Streets DOW}
 
 citypeds %>% mutate(HourOfDay=hour(Crash_DateTime)) %>%
   mutate(Daynum=wday(Crash_Date)) %>%
@@ -485,7 +478,6 @@ citypeds %>% mutate(HourOfDay=hour(Crash_DateTime)) %>%
   filter(Severity!="Unknown") %>%
   select(Severity, HourOfDay, Daynum, MonOfYear) %>%
   ggplot(aes(x=wday(Daynum, label=TRUE))) +
-  #geom_bar(aes(y = (..count..)/sum(..count..), fill=Severity)) +
   geom_bar(aes(group=factor(0), y = ..prop.., fill=Severity), stat="count") +
   facet_grid(Severity~.) +
   scale_y_continuous(labels=scales::percent) +
@@ -503,7 +495,7 @@ labs(title = "Pedestrian/Auto Collisions in Harris County, 2010-2017",
 
 The numbers are getting small, so the statistics are getting suspect, but it does appear tha the Sunday spike in fatalities is dominated by the early hours - Saturday night really. The Saturday spike has a small increase at 2 AM, but also a significant late night component. I would guess that alcohol is involved - either for the driver or the pedestrian, or both.
 
-```{r Fatalities by Day and Hour, echo=FALSE, message=FALSE}
+```{r Fatalities by Day and Hour, message=FALSE}
 
 citypeds %>% mutate(Day=wday(Crash_DateTime, label=TRUE), Hour=hour(Crash_DateTime)) %>%
   filter(Severity=="Fatal") %>%
@@ -524,7 +516,7 @@ citypeds %>% mutate(Day=wday(Crash_DateTime, label=TRUE), Hour=hour(Crash_DateTi
 All of the injury categories mirror each other, showing lower values in the summer and higher values in the spring and fall. 
 Death takes a holiday? This may be a measurement of more pedestrians on the streets during good weather. It may in part also be due to school children not walking to school in the summer. In support of that hypothesis, December is also low.
 
-```{r Subset for City Streets Severity vs Month of Year, echo=FALSE}
+```{r Subset for City Streets Severity vs Month of Year}
 
 citypeds %>% mutate(HourOfDay=hour(Crash_DateTime)) %>%
   mutate(Daynum=wday(Crash_Date)) %>%
@@ -532,7 +524,6 @@ citypeds %>% mutate(HourOfDay=hour(Crash_DateTime)) %>%
   filter(Severity!="Unknown") %>%
   select(Severity, HourOfDay, Daynum, MonOfYear) %>%
   ggplot(aes(x=MonOfYear)) +
-  #geom_bar(aes(y = (..count..)/sum(..count..), fill=Severity)) +
   geom_bar(aes(group=factor(0), y = ..prop.., fill=Severity), stat="count") +
   facet_grid(Severity~.) +
   scale_y_continuous(labels=scales::percent) +
@@ -553,7 +544,7 @@ It would be interesting to compare with other cities - is this a national trend?
 According to the [Governors Highway Safety Association](https://www.ghsa.org/resources/spotlight-peds17), pedestrian fatalities have been rising since 2009, by 10%-20% per year nationwide. So Houston is not immune from this trend.
 
 
-```{r Subset for City Streets Severity vs Date, echo=FALSE, message=FALSE}
+```{r Subset for City Streets Severity vs Date, message=FALSE}
 
 citypeds %>% 
   filter(Severity!="Unknown") %>%
@@ -584,7 +575,7 @@ Let's take a break from city streets to consider Non-Trafficways.
 
 Not surprisingly, parking lots are especially dangerous when most used - in the middle of the day.
 
-```{r Subset for Parking Lots TOD, echo=FALSE}
+```{r Subset for Parking Lots TOD}
 
 parkingpeds <- peds %>% filter(RoadType=="Non Trafficway")
 parkingpeds %>% mutate(HourOfDay=hour(Crash_DateTime)) %>%
@@ -610,7 +601,7 @@ labs(title = "Pedestrian/Auto Collisions in Harris County, 2010-2017",
 
 Hard to say that there is much dependence on day of week. Note that the numbers of fatalities are small, so for that row we may be seeing statistical fluctuation.
 
-```{r Subset for Parking Lots DOW, echo=FALSE}
+```{r Subset for Parking Lots DOW}
 
 parkingpeds %>% mutate(HourOfDay=hour(Crash_DateTime)) %>%
   mutate(Daynum=wday(Crash_Date)) %>%
@@ -618,7 +609,6 @@ parkingpeds %>% mutate(HourOfDay=hour(Crash_DateTime)) %>%
   filter(Severity!="Unknown") %>%
   select(Severity, HourOfDay, Daynum, MonOfYear) %>%
   ggplot(aes(x=wday(Daynum, label=TRUE))) +
-  #geom_bar(aes(y = (..count..)/sum(..count..), fill=Severity)) +
   geom_bar(aes(group=factor(0), y = ..prop.., fill=Severity), stat="count") +
   facet_grid(Severity~.) +
   scale_y_continuous(labels=scales::percent) +
@@ -637,7 +627,7 @@ labs(title = "Pedestrian/Auto Collisions in Harris County, 2010-2017",
 
 No obvious patterns to me.
 
-```{r Subset for Parking Lots Severity vs Month of Year, echo=FALSE}
+```{r Subset for Parking Lots Severity vs Month of Year}
 
 parkingpeds %>% mutate(HourOfDay=hour(Crash_DateTime)) %>%
   mutate(Daynum=wday(Crash_Date)) %>%
@@ -645,7 +635,6 @@ parkingpeds %>% mutate(HourOfDay=hour(Crash_DateTime)) %>%
   filter(Severity!="Unknown") %>%
   select(Severity, HourOfDay, Daynum, MonOfYear) %>%
   ggplot(aes(x=MonOfYear)) +
-  #geom_bar(aes(y = (..count..)/sum(..count..), fill=Severity)) +
   geom_bar(aes(group=factor(0), y = ..prop.., fill=Severity), stat="count") +
   facet_grid(Severity~.) +
   scale_y_continuous(labels=scales::percent) +
@@ -663,7 +652,7 @@ labs(title = "Pedestrian/Auto Collisions in Harris County, 2010-2017",
 
 Interestingly, we see the same trend in the non-trafficway data as in the city street data. Is this related to cell-phone distracted pedestrians? Improved economy? Hard to say.
 
-```{r Subset for Parking Lots Severity vs Date, echo=FALSE, message=FALSE}
+```{r Subset for Parking Lots Severity vs Date, message=FALSE}
 
 parkingpeds %>% 
   filter(Severity!="Unknown") %>%
@@ -689,11 +678,29 @@ labs(title = "Pedestrian/Auto Collisions in Harris County, 2010-2017",
 
 ## Where are most fatalities?
 
+```{r Mean Streets, results="asis"}
+
+badspots <- 
+  citypedslatlng %>%
+  group_by(latlon, Rpt_Street_Name, Severity) %>%
+  summarise(total=n())
+
+# Locations with 5 or more incidents
+mytable <-  citypedslatlng %>%
+  group_by(latlon, Rpt_Street_Name) %>%
+  summarise(total=n()) %>%
+  filter(total>4) %>%
+  arrange(desc(total)) %>%
+  select(Street=Rpt_Street_Name, Total=total)
+print(xtable(mytable), type="html")
+```
+
+
 ## Maps
 
 Let's make some maps
 
-```{r Mapping Prep, echo=FALSE}
+```{r Mapping Prep}
 
 #   Pull out Peds with geocoding
 #peds <- peds %>% filter(!is.na(Latitude)) 

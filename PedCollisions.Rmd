@@ -724,24 +724,21 @@ ggmap(gmap, extent='normal', maprange=FALSE, show.legend=FALSE) %+% badspots + a
   theme(legend.position = "right", axis.title = element_blank(), text = element_text(size = 12)) 
 ```
 
-
-```{r faceted maps for downtown}
+```{r set up for maps}
 
 CenterDowntown <- c(-95.367, 29.757)
-CenterModtown <- c(-95.388, 29.744)
-CenterSharptown <- c(-95.534, 29.703)
+CenterMidtown <- c(-95.388, 29.744)
+CenterSharpstown <- c(-95.534, 29.703)
 CenterNorthline <- c(-95.378, 29.849)
 CenterAcres <- c(-95.471, 29.859)
 
-gmap = get_map(location=CenterDowntown, source="google", zoom=15)
 Serious <- c("Suspected Serious Injury", "Fatal")
 
-badspots_bg <-
+bad_bg <-
   citypedslatlng %>%
   group_by(latlon, Latitude, Longitude) %>%
-  summarise(total=n()) %>%
-  filter(total>2) %>%
-  filter(between(Latitude,CenterDowntown[2]-0.01, CenterDowntown[2]+0.01) && between(Longitude,CenterDowntown[1]-0.01, CenterDowntown[1]+0.01))
+  summarise(total_bg=n()) %>%
+  filter(total_bg>2) 
 
 badspots <- 
   citypedslatlng %>%
@@ -754,158 +751,82 @@ badspots <-
     TRUE ~ "Night"
   )) %>%
   group_by(latlon, Latitude, Longitude, Injury, TimeOfDay) %>%
-  summarise(total=n()) %>%
-  filter(total>2)
+  summarise(total=n()) 
 
-badmap <- badspots %>% filter(between(Latitude,CenterDowntown[2]-0.01, CenterDowntown[2]+0.01) && between(Longitude,CenterDowntown[1]-0.01, CenterDowntown[1]+0.01)) 
-ggmap(gmap, extent='normal', maprange=FALSE, show.legend=FALSE) %+% badmap + aes(x = Longitude, y = Latitude) +
-  geom_point(data=badspots_bg, aes(size=total*2, x = Longitude, y = Latitude), color="yellow", alpha=.5) %+% badmap +
-  geom_point(aes(size=total, x = Longitude, y = Latitude, color=total)) +
-facet_wrap(TimeOfDay ~ Injury) +
-  #guides(fill = FALSE) +  # to remove the legend
-  #theme_bw() +             # for clean look overall
-  #scale_color_continuous(guide="colorbar") +
-  #scale_alpha(range = c(0.00, 0.35), guide = FALSE) +
-  labs(title="Pedestrian Collisions Downtown 2010-2017") +
-  theme(legend.position = "right", axis.title = element_blank(), text = element_text(size = 12)) 
+facetmap <- function(){
+  badspots_bg <-bad_bg %>%
+    filter(
+      between(Latitude, Center[2]-0.01, Center[2]+0.01) &&
+      between(Longitude,Center[1]-0.01, Center[1]+0.01))
+  
+  badmap <- badspots %>% filter(
+      between(Latitude,Center[2]-0.01, Center[2]+0.01) &&
+      between(Longitude,Center[1]-0.01, Center[1]+0.01)) 
 
+  ggmap(gmap, extent='normal', maprange=FALSE, show.legend=FALSE) %+% badmap + aes(x = Longitude, y = Latitude) +
+    geom_point(data=badspots_bg, aes(size=total_bg, x = Longitude, y = Latitude), fill="yellow", shape=21, color="black", stroke=.5, show.legend=NA) +  
+    geom_point(data=badmap, aes(size=total, x = Longitude, y = Latitude, color=total)) +
+  facet_wrap(TimeOfDay ~ Injury) +
+    guides(fill = FALSE) +  # to remove the legend
+    theme_bw() +             # for clean look overall
+    scale_color_continuous(guide="colorbar", name="Subtotal") +
+    scale_alpha(range = c(0.00, 0.35), guide = FALSE) +
+    labs(title=paste("Pedestrian Collisions", Place,"2010-2017"), size="Total", subtitle="Yellow for total incidents of 3 or more, blue for subset by time and severity") +
+    theme(legend.position = "right", axis.title = element_blank(), text = element_text(size = 12)) 
+}
+```
 
+```{r faceted maps for downtown}
 
+Center <- CenterDowntown
+Place <- "Downtown"
+
+gmap = get_map(location=Center, source="google", zoom=15)
+
+facetmap()
 ```
 
 ```{r faceted maps for Midtown}
 
-CenterMidtown <- c(-95.388, 29.744)
-CenterSharptown <- c(-95.534, 29.703)
-CenterNorthline <- c(-95.378, 29.849)
-CenterAcres <- c(-95.471, 29.859)
+Center <- CenterMidtown
+Place <- "Midtown"
 
-gmap = get_map(location=CenterMidtown, source="google", zoom=15)
-Serious <- c("SUSPECTED SERIOUS INJURY", "FATAL")
+gmap = get_map(location=Center, source="google", zoom=15)
 
-badspots_bg <-
-  citypedslatlng %>%
-  group_by(latlon, Latitude, Longitude) %>%
-  summarise(total_bg=n()) %>%
-  filter(total_bg>1) %>%
-  filter(between(Latitude,CenterMidtown[2]-0.01, CenterMidtown[2]+0.01) && between(Longitude,CenterMidtown[1]-0.01, CenterMidtown[1]+0.01))
-
-badspots <- 
-  citypedslatlng %>%
-  mutate(Injury = case_when(
-    Severity %in%  Serious    ~ "Serious",
-    TRUE                      ~ "Non-Serious"
-  )) %>%
-  mutate(TimeOfDay = case_when(
-    between(hour(Crash_DateTime),7,20) ~ "Day",
-    TRUE ~ "Night"
-  )) %>%
-  group_by(latlon, Latitude, Longitude, Injury, TimeOfDay) %>%
-  summarise(total=n()) %>%
-  filter(total>2)
-
-badmap <- badspots %>% filter(between(Latitude,CenterMidtown[2]-0.01, CenterMidtown[2]+0.01) && between(Longitude,CenterMidtown[1]-0.01, CenterMidtown[1]+0.01)) 
-ggmap(gmap, extent='normal', maprange=FALSE, show.legend=FALSE) %+% badmap + aes(x = Longitude, y = Latitude) +
-  geom_point(data=badspots_bg, aes(size=total_bg, x = Longitude, y = Latitude), fill="yellow", shape=21, color="black", stroke=.5, show.legend=NA) +  
-  geom_point(data=badmap, aes(size=total, x = Longitude, y = Latitude, color=total)) +
-facet_wrap(TimeOfDay ~ Injury) +
-  guides(fill = FALSE) +  # to remove the legend
-  theme_bw() +             # for clean look overall
-  scale_color_continuous(guide="colorbar", name="Subtotal") +
-  scale_alpha(range = c(0.00, 0.35), guide = FALSE) +
-  labs(title="Pedestrian Collisions Midtown 2010-2017", size="Total") +
-  theme(legend.position = "right", axis.title = element_blank(), text = element_text(size = 12)) 
-
+facetmap()
 
 
 ```
 
 ```{r faceted maps for Sharpstown}
 
-CenterSharpstown <- c(-95.534, 29.703)
-CenterNorthline <- c(-95.378, 29.849)
-CenterAcres <- c(-95.471, 29.859)
+Center <- CenterSharpstown
+Place <- "Sharpstown"
 
-gmap = get_map(location=CenterSharpstown, source="google", zoom=15)
-Serious <- c("SUSPECTED SERIOUS INJURY", "FATAL")
+gmap = get_map(location=Center, source="google", zoom=15)
 
-badspots_bg <-
-  citypedslatlng %>%
-  group_by(latlon, Latitude, Longitude) %>%
-  summarise(total_bg=n()) %>%
-  filter(total_bg>1) %>%
-  filter(between(Latitude,CenterSharpstown[2]-0.01, CenterSharpstown[2]+0.01) && between(Longitude,CenterSharpstown[1]-0.01, CenterSharpstown[1]+0.01))
-
-badspots <- 
-  citypedslatlng %>%
-  mutate(Injury = case_when(
-    Severity %in%  Serious    ~ "Serious",
-    TRUE                      ~ "Non-Serious"
-  )) %>%
-  mutate(TimeOfDay = case_when(
-    between(hour(Crash_DateTime),7,20) ~ "Day",
-    TRUE ~ "Night"
-  )) %>%
-  group_by(latlon, Latitude, Longitude, Injury, TimeOfDay) %>%
-  summarise(total=n()) %>%
-  filter(total>2)
-
-badmap <- badspots %>% filter(between(Latitude,CenterSharpstown[2]-0.01, CenterSharpstown[2]+0.01) && between(Longitude,CenterSharpstown[1]-0.01, CenterSharpstown[1]+0.01)) 
-ggmap(gmap, extent='normal', maprange=FALSE, show.legend=FALSE) %+% badmap + aes(x = Longitude, y = Latitude) +
-  geom_point(data=badspots_bg, aes(size=total_bg, x = Longitude, y = Latitude), fill="yellow", shape=21, color="black", stroke=.5, show.legend=NA) +  
-  geom_point(data=badmap, aes(size=total, x = Longitude, y = Latitude, color=total)) +
-facet_wrap(TimeOfDay ~ Injury) +
-  guides(fill = FALSE) +  # to remove the legend
-  theme_bw() +             # for clean look overall
-  scale_color_continuous(guide="colorbar", name="Subtotal") +
-  scale_alpha(range = c(0.00, 0.35), guide = FALSE) +
-  labs(title="Pedestrian Collisions Sharpstown 2010-2017", size="Total") +
-  theme(legend.position = "right", axis.title = element_blank(), text = element_text(size = 12)) 
-
-
+facetmap()
 
 ```
 ```{r faceted maps for Northline}
 
-CenterNorthline <- c(-95.378, 29.849)
-CenterAcres <- c(-95.471, 29.859)
+Center <- CenterNorthline
+Place <- "Northline"
 
-gmap = get_map(location=CenterNorthline, source="google", zoom=15)
-Serious <- c("SUSPECTED SERIOUS INJURY", "FATAL")
+gmap = get_map(location=Center, source="google", zoom=15)
 
-badspots_bg <-
-  citypedslatlng %>%
-  group_by(latlon, Latitude, Longitude) %>%
-  summarise(total_bg=n()) %>%
-  filter(total_bg>1) %>%
-  filter(between(Latitude,CenterNorthline[2]-0.01, CenterNorthline[2]+0.01) && between(Longitude,CenterNorthline[1]-0.01, CenterNorthline[1]+0.01))
+facetmap()
 
-badspots <- 
-  citypedslatlng %>%
-  mutate(Injury = case_when(
-    Severity %in%  Serious    ~ "Serious",
-    TRUE                      ~ "Non-Serious"
-  )) %>%
-  mutate(TimeOfDay = case_when(
-    between(hour(Crash_DateTime),7,20) ~ "Day",
-    TRUE ~ "Night"
-  )) %>%
-  group_by(latlon, Latitude, Longitude, Injury, TimeOfDay) %>%
-  summarise(total=n()) %>%
-  filter(total>2)
-
-badmap <- badspots %>% filter(between(Latitude,CenterNorthline[2]-0.01, CenterNorthline[2]+0.01) && between(Longitude,CenterNorthline[1]-0.01, CenterNorthline[1]+0.01)) 
-ggmap(gmap, extent='normal', maprange=FALSE, show.legend=FALSE) %+% badmap + aes(x = Longitude, y = Latitude) +
-  geom_point(data=badspots_bg, aes(size=total_bg, x = Longitude, y = Latitude), fill="yellow", shape=21, color="black", stroke=.5, show.legend=NA) +  
-  geom_point(data=badmap, aes(size=total, x = Longitude, y = Latitude, color=total)) +
-facet_wrap(TimeOfDay ~ Injury) +
-  guides(fill = FALSE) +  # to remove the legend
-  theme_bw() +             # for clean look overall
-  scale_color_continuous(guide="colorbar", name="Subtotal") +
-  scale_alpha(range = c(0.00, 0.35), guide = FALSE) +
-  labs(title="Pedestrian Collisions Northline 2010-2017", size="Total") +
-  theme(legend.position = "right", axis.title = element_blank(), text = element_text(size = 12)) 
+```
 
 
+```{r faceted maps for Acres}
+
+Center <- CenterAcres
+Place <- "Acres"
+
+gmap = get_map(location=Center, source="google", zoom=15)
+
+facetmap()
 
 ```

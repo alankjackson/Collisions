@@ -22,7 +22,7 @@ library(sf)
 
 collisions <- readRDS("~/Dropbox/Rprojects/Collisions/Collisions_2010_2017nozip.rds")
 HoustonBoundary <- c(-95.789963, 29.518566, -95.005814, 30.117875)
-HoustonBound <- c(-95.6, 29.6, -95.2, 30.0)
+HoustonBound <- c(-95.62, 29.6, -95.18, 30.0)
 
 #   Pull out Peds 
 peds <- collisions %>% filter(Harmed=="Pedestrian") %>%
@@ -202,8 +202,7 @@ The worst is a location that has racked up 13 incidents in 7 years - about one i
 ```{r Where are the worst spots for accidents}
 
 citypedslatlng <- citypeds %>% 
-  filter(!is.na(Latitude)) %>%
-  mutate(latlon=paste(as.character(Longitude), as.character(Latitude)))
+  filter(!is.na(Latitude)) 
  
 badspots <- citypedslatlng %>%
   group_by(latlon) %>%
@@ -703,7 +702,7 @@ print(xtable(mytable, auto=TRUE), type="html")
 ## Maps
 
 Let's make some maps.  
-If we plot all locations that had three or more incidents, we produce the map below. A Large concentration of oncidents downtown - that's where all the pedestrians are - but also some of the largest values outside of downtown.
+If we plot all locations that had three or more incidents, we produce the map below. A Large concentration of incidents downtown - that's where all the pedestrians are - but also some of the largest values are outside of downtown.
 
 ```{r Mapping more than 2}
 
@@ -719,11 +718,44 @@ bad_bg <-
 
 ggmap(gmap, extent='normal', maprange=FALSE, show.legend=FALSE) %+% bad_bg + aes(x = Longitude, y = Latitude) +
   geom_point(data=bad_bg, aes(size=total_bg,color=total_bg)) +
-  scale_color_continuous(guide="colorbar") +
+  scale_color_continuous(guide="colorbar", name="Total") +
   scale_alpha(range = c(0.00, 0.35), guide = FALSE) +
-  labs(title="Collisions 2010-2017", subtitle="Three or more incidents only") +
+  labs(title="Collisions 2010-2017", subtitle="Three or more incidents only", size="Total") +
   theme(legend.position = "right", axis.title = element_blank(), text = element_text(size = 12)) 
 ```
+
+## Serious Incidents only
+
+Let's look at locations that had a fatality or serious injury.
+
+```{r Mapping serious injuries}
+
+zoom <- 11
+center <- c(-95.4, 29.8)
+gmap = get_map(location=center, source="google", zoom=zoom)
+
+badspots <- 
+  citypedslatlng %>%
+  mutate(Injury = case_when(
+    Severity %in%  Serious ~ "Serious",
+    TRUE                   ~ "Non-Serious"
+  )) %>%
+  filter(Injury=="Serious") %>%
+  group_by(latlon, Latitude, Longitude) %>%
+  summarise(Total=n()) 
+  
+ggmap(gmap, extent='normal', maprange=FALSE, show.legend=FALSE) %+% badspots + aes(x = Longitude, y = Latitude) +
+  geom_point(data=badspots, aes(size=Total,color=Total)) +
+  scale_color_continuous(guide="colorbar", name="Total") +
+  scale_alpha(range = c(0.00, 0.35), guide = FALSE) +
+  labs(title="Collisions 2010-2017", subtitle="Fatal or Serious Only", size="Total") +
+  theme(legend.position = "right", axis.title = element_blank(), text = element_text(size = 12)) 
+```
+
+
+
+
+
 
 ```{r set up for maps}
 

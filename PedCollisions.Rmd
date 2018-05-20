@@ -22,12 +22,13 @@ library(sf)
 
 collisions <- readRDS("~/Dropbox/Rprojects/Collisions/Collisions_2010_2017nozip.rds")
 HoustonBoundary <- c(-95.789963, 29.518566, -95.005814, 30.117875)
-zoom <- 11
-center <- c(-95.4, 29.8)
-gmap = get_map(location=center, source="google", zoom=zoom)
+HoustonBound <- c(-95.6, 29.6, -95.2, 30.0)
 
 #   Pull out Peds 
-peds <- collisions %>% filter(Harmed=="Pedestrian") 
+peds <- collisions %>% filter(Harmed=="Pedestrian") %>%
+    filter(
+      between(Latitude, HoustonBound[2], HoustonBound[4] ) &&
+      between(Longitude,HoustonBound[1], HoustonBound[3] ))
 
 #   Create a lat/long hash to group on
 peds <- peds %>% 
@@ -687,11 +688,6 @@ Bellaire and Westheimer look pretty dangerous. Especially since the Montrose ent
 
 ```{r Mean Streets, message=FALSE, results="asis"}
 
-badspots <- 
-  citypedslatlng %>%
-  group_by(latlon, Rpt_Street_Name, Severity) %>%
-  summarise(total=n())
-
 # Locations with 5 or more incidents
 mytable <-  citypedslatlng %>%
   group_by(latlon, Rpt_Street_Name) %>%
@@ -706,21 +702,26 @@ print(xtable(mytable, auto=TRUE), type="html")
 
 ## Maps
 
-Let's make some maps
+Let's make some maps.  
+If we plot all locations that had three or more incidents, we produce the map below. A Large concentration of oncidents downtown - that's where all the pedestrians are - but also some of the largest values outside of downtown.
 
 ```{r Mapping more than 2}
 
-badspots <- 
+zoom <- 11
+center <- c(-95.4, 29.8)
+gmap = get_map(location=center, source="google", zoom=zoom)
+
+bad_bg <- 
   citypedslatlng %>%
   group_by(latlon, Latitude, Longitude) %>%
-  summarise(total=n()) %>%
-  filter(total>2)
+  summarise(total_bg=n()) %>%
+  filter(total_bg>2)
 
-ggmap(gmap, extent='normal', maprange=FALSE, show.legend=FALSE) %+% badspots + aes(x = Longitude, y = Latitude) +
-  geom_point(data=badspots, aes(size=total,color=total)) +
+ggmap(gmap, extent='normal', maprange=FALSE, show.legend=FALSE) %+% bad_bg + aes(x = Longitude, y = Latitude) +
+  geom_point(data=bad_bg, aes(size=total_bg,color=total_bg)) +
   scale_color_continuous(guide="colorbar") +
   scale_alpha(range = c(0.00, 0.35), guide = FALSE) +
-  labs(title="Collisions 2010-2017") +
+  labs(title="Collisions 2010-2017", subtitle="Three or more incidents only") +
   theme(legend.position = "right", axis.title = element_blank(), text = element_text(size = 12)) 
 ```
 
@@ -734,17 +735,11 @@ CenterAcres <- c(-95.471, 29.859)
 
 Serious <- c("Suspected Serious Injury", "Fatal")
 
-bad_bg <-
-  citypedslatlng %>%
-  group_by(latlon, Latitude, Longitude) %>%
-  summarise(total_bg=n()) %>%
-  filter(total_bg>2) 
-
 badspots <- 
   citypedslatlng %>%
   mutate(Injury = case_when(
-    Severity %in%  c("SUSPECTED SERIOUS INJURY", "FATAL") ~ "Serious",
-    TRUE                      ~ "Non-Serious"
+    Severity %in%  Serious ~ "Serious",
+    TRUE                   ~ "Non-Serious"
   )) %>%
   mutate(TimeOfDay = case_when(
     between(hour(Crash_DateTime),7,20) ~ "Day",

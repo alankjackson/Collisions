@@ -82,6 +82,39 @@ Harm <- cbind.data.frame(split(Harm, rep(1:2, times=length(Harm)/2)), stringsAsF
 names(Harm) <- c("Harm_Evnt_ID", "Harmed")
 Harm$Harm_Evnt_ID <- as.integer(Harm$Harm_Evnt_ID)
 
+#   Charge Category ID table
+Charge <- c(
+"10", "ALCOHOL/DRUGS",
+"11", "ASSAULT/MANSLAUGHTER WITH VEHICLE",
+"12",	"BICYCLE OFFENSES",
+"13",	"COMMERCIAL & MOTOR CARRIER VIOLATIONS",
+"14",	"DRIVER LICENSE & REGISTRATION VIOLATIONS",
+"15",	"DRIVER'S MISCELLANEOUS VIOLATIONS",
+"16",	"INSURANCE AND INSPECTION",
+"17",	"MOTORCYCLE VIOLATIONS",
+"18",	"OVERTAKING (PASSING)",
+"19",	"PARKING VIOLATIONS",
+"20",	"REPORTING VIOLATIONS (TRAFFIC VIOLATIONS)",
+"21",	"RIGHT OF WAY",
+"22",	"SEATBELT / HELMET USAGE",
+"23",	"SIGNAL INTENTION",
+"24",	"SPEEDING",
+"25",	"TRAFFIC SIGNS, SIGNALS, AND ROAD MARKINGS",
+"26",	"TURNING VIOLATIONS",
+"27",	"VEHICLE/EQUIPMENT DEFECTS",
+"28",	"WRONG SIDE/WRONG WAY",
+"29",	"OTHER",
+"30",	"NONE",
+"93",	"UNDETERMINED - FAIL BR",
+"94",	"REPORTED INVALID",
+"95",	"NOT REPORTED"
+)
+Charge <- cbind.data.frame(split(Charge, rep(1:2, times=length(Charge)/2)), stringsAsFactors=F)
+names(Charge) <- c("Charge_Cat_ID", "Charge")
+Charge$Charge_Cat_ID <- as.integer(Charge$Charge_Cat_ID)
+
+
+
 
 HarrisBoundary <- c(-95.990842, 29.499559, -94.852384, 30.180927)
 
@@ -159,21 +192,59 @@ City$Rpt_City_ID <- as.integer(City$Rpt_City_ID)
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+##  TXDoT Crash files
+
+Database is documented at https://www.txdot.gov/inside-txdot/division/traffic/data-access.html
+
+Access is from https://cris.txdot.gov/secure/Share
+
+Log on and download one year at a time
+
+After unzipping, main files required for crash data are the files with "crash" in the filename. Also need to add the data from the "charges" files.
+
+The "unit" files contain information about the car (make, model, year), which I will ignore for now.
+
+Download files and unzip all of them into a single directory.
+
+
 
 
 ```{r Read files}
-filenames <- list.files(path = "~/Dropbox/Rprojects/Collisions/TrafficAccidents", pattern="*csv$")
+filenames <- list.files(path = "~/Dropbox/Rprojects/Collisions/TrafficAccidents/fullunzip", pattern="*csv$")
 
-filenames <- paste("TrafficAccidents/",filenames, sep="")
+filenames <- paste("TrafficAccidents/fullunzip/",filenames, sep="")
 
-DF <- read.csv(filenames[1], stringsAsFactors = FALSE)
+filenames <- filenames[grep("201[01]0101", filenames)] # for testing
 
-for (i in filenames[-1]) {
-  df <- read.csv(i, stringsAsFactors = FALSE)
-  DF <- rbind(DF, df)
-}
+#  first read in the crash files
 
-df <- DF %>% select(Crash_Fatal_Fl, Crash_Date,	Crash_Time, Rpt_City_ID, Rpt_Block_Num, Rpt_Street_Pfx,	Rpt_Street_Name, Rpt_Street_Sfx, At_Intrsct_Fl, Latitude, Longitude, Street_Name, Street_Nbr, Tot_Injry_Cnt, Death_Cnt, Crash_Sev_ID, Crash_Speed_Limit, Harm_Evnt_ID, Road_Cls_ID, Intrsct_Relat_ID, Nbr_Of_Lane  )
+DF_collisions <- filenames[grep("crash", filenames)] %>% 
+  map(read_csv(  col_types = cols(
+    Crash_Date = col_date(format="%m/%d/%Y"),
+    Crash_Time = col_time(format = "%H:%M %p")
+  ))) %>% 
+  reduce(rbind)
+
+#  now read in the charges files
+
+DF_charges <- filenames[grep("charges", filenames)] %>% 
+  map(read_csv) %>% 
+  reduce(rbind)
+
+# Before merging with crash file, since there can be multiple charges,
+# need to rearrange charges so that they show up as a list for each
+# crash.
+
+DF_charges <- DF_charges %>% 
+  group_by(Crash_ID) %>% 
+  arrange(Charge_Cat_ID) %>% 
+  summarise(Charges = paste(Charge_Cat_ID, collapse=", "))
+
+# combine the two
+
+DF <- left_join(DF_collisions, DF_charges, by="Crash_ID")
+
+df <- DF %>% select(Crash_Fatal_Fl, Crash_Date,	Crash_Time, Rpt_City_ID, Rpt_Block_Num, Rpt_Street_Pfx,	Rpt_Street_Name, Rpt_Street_Sfx, At_Intrsct_Fl, Latitude, Longitude, Street_Name, Street_Nbr, Tot_Injry_Cnt, Death_Cnt, Crash_Sev_ID, Crash_Speed_Limit, Harm_Evnt_ID, Road_Cls_ID, Intrsct_Relat_ID, Nbr_Of_Lane, Charges  )
 
 df <- left_join(df, City, by="Rpt_City_ID")
 df <- left_join(df, Severity, by="Crash_Sev_ID")
@@ -210,13 +281,16 @@ sort(unique(df$Crash_Fatal_Fl))
 
 sort(unique(df$Crash_Date))
 
-df$Crash_DateTime <- mdy_hm(paste(df$Crash_Date, df$Crash_Time))
-
 #  make it a date
 
 df$Crash_Date <- mdy(df$Crash_Date)
 
+###df$Crash_DateTime <- df$Crash_Date + df$Crash_Time
+#   Do I need datetime? Most reports want either time OR date
+
 range(df$Crash_Date)
+range(df$Crash_Time)
+###range(df$Crash_DateTime)
 
 ```
 
@@ -226,7 +300,7 @@ sort(unique(df$Crash_Time))
 
 #   make it a time
 
-df$Crash_Time <- ymd_hm(paste("2000/1/1",df$Crash_Time))
+df$Crash_Time <- hm(df$Crash_Time)
 sort(unique(hour(df$Crash_Time)))
 
 ```
@@ -355,7 +429,7 @@ keepdf <-  df
 
 #     Add neighborhood and zipcode designations to records
 
-```{r Add neighborhood and zipcode}
+#```{r Add neighborhood and zipcode}
 ####   mask out rows with bad coordinates
 maskcoord <- !(is.na(df$Latitude) | is.na(df$Longitude))
 #  Create a temporary sf data frame for doing the intersects
@@ -390,7 +464,7 @@ a <- st_intersects(dat, zipcodes, sparse = TRUE)
 df$Zip_Code[maskcoord] <- zipcodes$Zip_Code[unlist(a)]
 
 
-```
+#```
 
 
 ```{r save result out to a file}

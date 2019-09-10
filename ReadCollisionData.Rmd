@@ -212,14 +212,14 @@ Download files and unzip all of them into a single directory.
 ```{r Read files}
 filenames <- list.files(path = "~/Dropbox/Rprojects/Collisions/TrafficAccidents/fullunzip", pattern="*csv$")
 
-filenames <- paste("TrafficAccidents/fullunzip/",filenames, sep="")
+filenames <- paste("~/Dropbox/Rprojects/Collisions/TrafficAccidents/fullunzip/",filenames, sep="")
 
-filenames <- filenames[grep("201[01]0101", filenames)] # for testing
+#filenames <- filenames[grep("201[01]0101", filenames)] # for testing
 
 #  first read in the crash files
 
 DF_collisions <- filenames[grep("crash", filenames)] %>% 
-  map(read_csv(  col_types = cols(
+  map(~read_csv(.x, col_types = cols(
     Crash_Date = col_date(format="%m/%d/%Y"),
     Crash_Time = col_time(format = "%H:%M %p")
   ))) %>% 
@@ -281,27 +281,27 @@ sort(unique(df$Crash_Fatal_Fl))
 
 sort(unique(df$Crash_Date))
 
-#  make it a date
-
-df$Crash_Date <- mdy(df$Crash_Date)
-
-###df$Crash_DateTime <- df$Crash_Date + df$Crash_Time
-#   Do I need datetime? Most reports want either time OR date
-
 range(df$Crash_Date)
 range(df$Crash_Time)
-###range(df$Crash_DateTime)
 
 ```
+
+
+```{r Look at Charges}
+
+sort(unique(df$Charges))
+
+df$Charges <- str_replace_all(df$Charges, "NA, ", "")
+df$Charges <- str_replace(df$Charges, ", NA", "")
+df$Charges <- str_replace(df$Charges, "NA", "")
+
+```
+
+
 
 ```{r Look at Crash_Time}
 
 sort(unique(df$Crash_Time))
-
-#   make it a time
-
-df$Crash_Time <- hm(df$Crash_Time)
-sort(unique(hour(df$Crash_Time)))
 
 ```
 

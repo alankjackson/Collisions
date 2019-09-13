@@ -8,7 +8,6 @@ output: html_document
 ```{r setup, include=FALSE}
 library(tidyverse)
 library(lubridate)
-library(sf)
 
 googlecrs <- 4326
 
@@ -242,12 +241,27 @@ DF_charges <- filenames[grep("charges", filenames)] %>%
 
 ```{r Look at Charges file}
 
-ChargesTemp <- DF_charges %>% group_by(Charge) %>% tally() %>% arrange(-n)
+ChargesTemp <- DF_Charges_temp[DF_Charges_temp$Simple_Charge=="",] %>% group_by(Charge) %>% tally() %>% arrange(-n)
 
 # Start a new field, Simple_Charge which will be used
 # But first populate a:z with each charge, and combine later
 
 DF_charges$a[DF_charges$Charge=="NO CHARGES"] <- "None"
+DF_charges$a[DF_charges$Charge=="NO CHARGE"] <- "None"
+DF_charges$a[DF_charges$Charge=="NONE"] <- "None"
+DF_charges$a[DF_charges$Charge=="NONE."] <- "None"
+DF_charges$a[DF_charges$Charge=="NONE FILED"] <- "None"
+DF_charges$a[DF_charges$Charge=="NONE AT THIS TIME"] <- "None"
+DF_charges$a[DF_charges$Charge=="N/A"] <- "None"
+DF_charges$a[grepl("CONFLICT[IE][ND]G? STATEMENT", DF_charges$Charge)] <- "None"
+DF_charges$a[grepl("NOT? CIT", DF_charges$Charge)] <- "None"
+DF_charges$a[grepl("NO CHARGES", DF_charges$Charge)] <- "None"
+DF_charges$a[grepl("NOT? CH", DF_charges$Charge)] <- "None"
+DF_charges$a[grepl("^ACCIDENT$", DF_charges$Charge)] <- "None"
+DF_charges$a[grepl("^CRASH$", DF_charges$Charge)] <- "None"
+DF_charges$a[grepl("^ACC$", DF_charges$Charge)] <- "None"
+DF_charges$a[is.na(DF_charges$Charge)] <- "None"
+
 
 #   Function to build mask for updating Simple_Charge
 update_charge <- function(match){
@@ -260,13 +274,25 @@ update_charge <- function(match){
 # speeding beats no license, and work it that way.
 
 # Speeding
-mask <- update_charge("SPEED")
+mask <- update_charge("SPEE*D")
 DF_charges$b[mask] <- "Speeding"
 
 mask <- update_charge("SPEE ")
 DF_charges$b[mask] <- "Speeding"
 
+mask <- update_charge("SPEE")
+DF_charges$b[mask] <- "Speeding"
+
 mask <- update_charge("SPD")
+DF_charges$b[mask] <- "Speeding"
+
+mask <- update_charge("SEED")
+DF_charges$b[mask] <- "Speeding"
+
+mask <- update_charge("SPPED")
+DF_charges$b[mask] <- "Speeding"
+
+mask <- update_charge("F\\.?T\\.?C\\.?S")
 DF_charges$b[mask] <- "Speeding"
 
 # Bad license plates (do this first so can use license to find drivers license)
@@ -289,26 +315,80 @@ DF_charges$d[mask] <- "No License"
 mask <- update_charge("LICENC")
 DF_charges$d[mask] <- "No License"
 
+mask <- update_charge("LISCEN")
+DF_charges$d[mask] <- "No License"
+
+mask <- update_charge("LINCEN")
+DF_charges$d[mask] <- "No License"
+
 mask <- update_charge("TXDL")
+DF_charges$d[mask] <- "No License"
+
+mask <- update_charge("NO OPER")
+DF_charges$d[mask] <- "No License"
+
+mask <- update_charge("D\\.L")
+DF_charges$d[mask] <- "No License"
+
+mask <- update_charge("D\\.?W\\.?L")
 DF_charges$d[mask] <- "No License"
 
 mask <- update_charge("NDL")
 DF_charges$d[mask] <- "No License"
 
-mask <- update_charge("NOL")
+mask <- update_charge("NO O\\.?P?L")
+DF_charges$d[mask] <- "No License"
+
+mask <- update_charge("N\\.?O\\.?L")
 DF_charges$d[mask] <- "No License"
 
 mask <- update_charge("CDL")
 DF_charges$d[mask] <- "No License"
 
+mask <- update_charge("^NO L$")
+DF_charges$d[mask] <- "No License"
+
 mask <- update_charge(" D/L")
+DF_charges$d[mask] <- "No License"
+
+mask <- update_charge("^DL ")
+DF_charges$d[mask] <- "No License"
+
+mask <- update_charge("^N?O?T?/?-?DL$")
+DF_charges$d[mask] <- "No License"
+
+mask <- update_charge("DWLI")
+DF_charges$d[mask] <- "No License"
+
+mask <- update_charge("ENDOR")
+DF_charges$d[mask] <- "No License"
+
+mask <- update_charge("LISEN")
+DF_charges$d[mask] <- "No License"
+
+mask <- update_charge("UNLI")
+DF_charges$d[mask] <- "No License"
+
+mask <- update_charge("DRIVER'?S? LIC")
 DF_charges$d[mask] <- "No License"
 
 # No insurance
 mask <- update_charge("INSUR")
 DF_charges$e[mask] <- "No Insurance"
 
+mask <- update_charge("^INS$")
+DF_charges$e[mask] <- "No Insurance"
+
+mask <- update_charge("INSR")
+DF_charges$e[mask] <- "No Insurance"
+
+mask <- update_charge("^NO[ -/]INS")
+DF_charges$e[mask] <- "No Insurance"
+
 mask <- update_charge("RESP")
+DF_charges$e[mask] <- "No Insurance"
+
+mask <- update_charge("NO F\\.R\\.")
 DF_charges$e[mask] <- "No Insurance"
 
 mask <- update_charge("FINAN")
@@ -317,8 +397,62 @@ DF_charges$e[mask] <- "No Insurance"
 mask <- update_charge("FIN RES")
 DF_charges$e[mask] <- "No Insurance"
 
+mask <- update_charge("MAINTAIN F")
+DF_charges$e[mask] <- "No Insurance"
+
+mask <- update_charge("NO INS\\.?$")
+DF_charges$e[mask] <- "No Insurance"
+
+mask <- update_charge("NO INS\\.")
+DF_charges$e[mask] <- "No Insurance"
+
+mask <- update_charge("NO INSU$")
+DF_charges$e[mask] <- "No Insurance"
+
+mask <- update_charge("FT?MFR")
+DF_charges$e[mask] <- "No Insurance"
+
+mask <- update_charge("F\\.?M")
+DF_charges$e[mask] <- "No Insurance"
+
+mask <- update_charge("F\\.T\\.?M")
+DF_charges$e[mask] <- "No Insurance"
+
+mask <- update_charge("LIAB")
+DF_charges$e[mask] <- "No Insurance"
+
+mask <- update_charge("F M F R")
+DF_charges$e[mask] <- "No Insurance"
+
+mask <- update_charge("QUALI")
+DF_charges$e[mask] <- "No Insurance"
+
+mask <- update_charge("NOIN?$")
+DF_charges$e[mask] <- "No Insurance"
+
+mask <- update_charge("NOIN?$")
+DF_charges$e[mask] <- "No Insurance"
+
+mask <- update_charge("PROOF OF FI")
+DF_charges$e[mask] <- "No Insurance"
+
+mask <- update_charge(" NSURA")
+DF_charges$e[mask] <- "No Insurance"
+
+mask <- update_charge("IN?SUR?ANCE")
+DF_charges$e[mask] <- "No Insurance"
+
+mask <- update_charge("URANCE")
+DF_charges$e[mask] <- "No Insurance"
+
+mask <- update_charge("PROOF OF INS")
+DF_charges$e[mask] <- "No Insurance"
+
 # Ran red light
 mask <- update_charge(" RED ")
+DF_charges$f[mask] <- "Ran Red Light"
+
+mask <- update_charge("RED ?LIGHT")
 DF_charges$f[mask] <- "Ran Red Light"
 
 mask <- update_charge(" RED$")
@@ -327,8 +461,35 @@ DF_charges$f[mask] <- "Ran Red Light"
 mask <- update_charge("STOP LIGHT")
 DF_charges$f[mask] <- "Ran Red Light"
 
+mask <- update_charge("CONTROL DEV")
+DF_charges$f[mask] <- "Ran Red Light"
+
+mask <- update_charge("STOP ?AND|\\&|/ ?GO")
+DF_charges$f[mask] <- "Ran Red Light"
+
+mask <- update_charge("LANE CONT")
+DF_charges$f[mask] <- "Ran Red Light"
+
+mask <- update_charge("DISREGARDE?D? SIGNAL")
+DF_charges$f[mask] <- "Ran Red Light"
+
+mask <- update_charge("DISREGARDE?D? LIGHT")
+DF_charges$f[mask] <- "Ran Red Light"
+
+mask <- update_charge("DISREGARDE?D? TRAFFIC")
+DF_charges$f[mask] <- "Ran Red Light"
+
+mask <- update_charge("RAN A? ?LIGHT")
+DF_charges$f[mask] <- "Ran Red Light"
+
+mask <- update_charge("RAN A? ?SIGNAL LIGHT")
+DF_charges$f[mask] <- "Ran Red Light"
+
+mask <- update_charge("RAN RA?D ")
+DF_charges$f[mask] <- "Ran Red Light"
+
 # Unsafe Lane Change
-mask <- update_charge("CHANGE LANE")
+mask <- update_charge("CHANGES? LANE")
 DF_charges$g[mask] <- "Unsafe Lane Change"
 
 mask <- update_charge("CHANGED LANE")
@@ -337,8 +498,17 @@ DF_charges$g[mask] <- "Unsafe Lane Change"
 mask <- update_charge("LANE CHANGE")
 DF_charges$g[mask] <- "Unsafe Lane Change"
 
+mask <- update_charge("CHANGING LANE")
+DF_charges$g[mask] <- "Unsafe Lane Change"
+
+mask <- update_charge("CHANGED? ?LA?NE?")
+DF_charges$g[mask] <- "Unsafe Lane Change"
+
+mask <- update_charge("LA?NE? ?CHANGE")
+DF_charges$g[mask] <- "Unsafe Lane Change"
+
 # Single Lane failure
-mask <- update_charge("SINGLE")
+mask <- update_charge("SI[NG][GN]LE")
 DF_charges$h[mask] <- "Fail Single Lane"
 
 mask <- update_charge("SINGL ")
@@ -347,14 +517,17 @@ DF_charges$h[mask] <- "Fail Single Lane"
 mask <- update_charge("MAINTAIN SING ")
 DF_charges$h[mask] <- "Fail Single Lane"
 
+mask <- update_charge("MAINTAIN LANE")
+DF_charges$h[mask] <- "Fail Single Lane"
+
 # DWI
-mask <- update_charge("DWI")
+mask <- update_charge("D\\.?W\\.?I")
 DF_charges$i[mask] <- "DWI"
 
 mask <- update_charge("INTOX")
 DF_charges$i[mask] <- "DWI"
 
-mask <- update_charge("DUI")
+mask <- update_charge("D\\.?U\\.?I")
 DF_charges$i[mask] <- "DWI"
 
 mask <- update_charge("INFLU")
@@ -376,18 +549,45 @@ DF_charges$j[mask] <- "Failure to Yield"
 mask <- update_charge("YIEL")
 DF_charges$j[mask] <- "Failure to Yield"
 
+mask <- update_charge("FYR")
+DF_charges$j[mask] <- "Failure to Yield"
+
+mask <- update_charge("FTYR")
+DF_charges$j[mask] <- "Failure to Yield"
+
+mask <- update_charge("^F\\.?T\\.?Y ")
+DF_charges$j[mask] <- "Failure to Yield"
+
+mask <- update_charge("FAIL TO Y")
+DF_charges$j[mask] <- "Failure to Yield"
+
+mask <- update_charge("FAIL TO STOP FR")
+DF_charges$j[mask] <- "Failure to Yield"
+
+mask <- update_charge("YROW")
+DF_charges$j[mask] <- "Failure to Yield"
+
 # Failure to Stop and Give Information
-mask <- update_charge("FSGI")
+mask <- update_charge("F\\.?S\\.?G\\.?I")
 DF_charges$k[mask] <- "FSGI"
 
 mask <- update_charge("GIVE INFO")
 DF_charges$k[mask] <- "FSGI"
 
+mask <- update_charge("FGSI")
+DF_charges$k[mask] <- "FSGI"
+
 # Failure to Stop and Render Aid
-mask <- update_charge("FSRA")
+mask <- update_charge("F\\.?S\\.?R\\.?A")
 DF_charges$l[mask] <- "FSRA"
 
 mask <- update_charge(" AID")
+DF_charges$l[mask] <- "FSRA"
+
+mask <- update_charge("HIT AND RUN")
+DF_charges$l[mask] <- "FSRA"
+
+mask <- update_charge("LEAVING T?H?E? ?SCENE")
 DF_charges$l[mask] <- "FSRA"
 
 # Registration issue
@@ -397,16 +597,349 @@ DF_charges$m[mask] <- "Registration Issue"
 mask <- update_charge("EXPIRED REG")
 DF_charges$m[mask] <- "Registration Issue"
 
-mask <- update_charge("EXP REG")
+mask <- update_charge("EXP?\\.? REG")
+DF_charges$m[mask] <- "Registration Issue"
+
+mask <- update_charge("NO REG\\.?$")
+DF_charges$m[mask] <- "Registration Issue"
+
+mask <- update_charge("EXP/NO REG")
 DF_charges$m[mask] <- "Registration Issue"
 
 # Unsafe Backing
 mask <- update_charge("BACK")
 DF_charges$n[mask] <- "Unsafe Backing"
 
+# Follow Too Close
+mask <- update_charge("TOO? CLOSS?[LE]E?Y?")
+DF_charges$o[mask] <- "Follow Too Close"
 
+# Stop Sign
+mask <- update_charge("STOP SIGN")
+DF_charges$p[mask] <- "Stop Sign"
 
+mask <- update_charge("RAN STOP")
+DF_charges$p[mask] <- "Stop Sign"
 
+# Unsafe Turn
+mask <- update_charge("TURN")
+DF_charges$q[mask] <- "Unsafe Turn"
+
+# Inspection
+mask <- update_charge("INSP")
+DF_charges$r[mask] <- "Inspection"
+
+mask <- update_charge("MVI")
+DF_charges$r[mask] <- "Inspection"
+
+mask <- update_charge("EXP\\.?I?R?E?D? INS")
+DF_charges$r[mask] <- "Inspection"
+
+# License Plate
+mask <- update_charge("MVR")
+DF_charges$s[mask] <- "License Plate"
+
+mask <- update_charge(" TAG")
+DF_charges$s[mask] <- "License Plate"
+
+# Unsafe Passing
+mask <- update_charge("PASS ")
+DF_charges$t[mask] <- "Unsafe Passing"
+
+mask <- update_charge("PASSING")
+DF_charges$t[mask] <- "Unsafe Passing"
+
+mask <- update_charge("PASSED")
+DF_charges$t[mask] <- "Unsafe Passing"
+
+mask <- update_charge("DRIVING ON SHOULDER")
+DF_charges$t[mask] <- "Unsafe Passing"
+
+# Other Lane violations
+mask <- update_charge("DESIGNATED LANE")
+DF_charges$u[mask] <- "Other Lane Violations"
+
+mask <- update_charge("ONE-HALF")
+DF_charges$u[mask] <- "Other Lane Violations"
+
+mask <- update_charge(" HALF ")
+DF_charges$u[mask] <- "Other Lane Violations"
+
+mask <- update_charge(" 1/2 ")
+DF_charges$u[mask] <- "Other Lane Violations"
+
+mask <- update_charge("SHOULDER")
+DF_charges$u[mask] <- "Other Lane Violations"
+
+mask <- update_charge("CENTER LANE")
+DF_charges$u[mask] <- "Other Lane Violations"
+
+# Child Seat
+mask <- update_charge("CHILD")
+DF_charges$v[mask] <- "Child Seat"
+
+mask <- update_charge("CAR SEAT")
+DF_charges$v[mask] <- "Child Seat"
+
+# Texting etc
+mask <- update_charge("TEXT")
+DF_charges$w[mask] <- "Texting/Phone"
+
+mask <- update_charge("PHONE")
+DF_charges$w[mask] <- "Texting/Phone"
+
+mask <- update_charge(" ELEC")
+DF_charges$w[mask] <- "Texting/Phone"
+
+# Unsafe start
+mask <- update_charge("START")
+DF_charges$x[mask] <- "Unsafe Start"
+
+# Unsafe Load
+mask <- update_charge("LOAD")
+DF_charges$y[mask] <- "Unsafe Load"
+
+mask <- update_charge("FAIL TO SECURE")
+DF_charges$y[mask] <- "Unsafe Load"
+
+# no seatbelt
+mask <- update_charge("BELT")
+DF_charges$z[mask] <- "No Seatbelt"
+
+mask <- update_charge("RESTRAIN")
+DF_charges$z[mask] <- "No Seatbelt"
+
+# Evading
+mask <- update_charge("EVAD")
+DF_charges$A[mask] <- "Evading"
+
+# Evasive Action
+mask <- update_charge("EVASS?IVE")
+DF_charges$B[mask] <- "Faulty Evasive Action"
+
+# Address Change
+mask <- update_charge("ADD")
+DF_charges$C[mask] <- "Address Change"
+
+mask <- update_charge("ADRESS")
+DF_charges$C[mask] <- "Address Change"
+
+# Wrong Way
+mask <- update_charge("WRONG WAY")
+DF_charges$D[mask] <- "Wrong Way"
+
+mask <- update_charge("WRONG SIDE")
+DF_charges$D[mask] <- "Wrong Way"
+
+# Impeding Traffic
+mask <- update_charge("IMPED")
+DF_charges$E[mask] <- "Impeding Traffic"
+
+# Inattention
+mask <- update_charge("DISTRACT")
+DF_charges$F[mask] <- "Distraction"
+
+mask <- update_charge("INATT")
+DF_charges$F[mask] <- "Distraction"
+
+# Defective
+mask <- update_charge("DEFECT")
+DF_charges$G[mask] <- "Defective Vehicle"
+
+mask <- update_charge("BALD")
+DF_charges$G[mask] <- "Defective Vehicle"
+
+mask <- update_charge("CRACK")
+DF_charges$G[mask] <- "Defective Vehicle"
+
+# Unauthorized Use
+mask <- update_charge("UUMV")
+DF_charges$H[mask] <- "Unauthorized Use"
+
+mask <- update_charge("UNAUTHORIZED USE")
+DF_charges$H[mask] <- "Unauthorized Use"
+
+# Drug possession
+mask <- update_charge("PARAPH")
+DF_charges$I[mask] <- "Drug Possession"
+
+mask <- update_charge("SUBST")
+DF_charges$I[mask] <- "Drug Possession"
+
+mask <- update_charge("MARIJ")
+DF_charges$I[mask] <- "Drug Possession"
+
+mask <- update_charge("^P\\.?O\\.?M")
+DF_charges$I[mask] <- "Drug Possession"
+
+mask <- update_charge("PCS")
+DF_charges$I[mask] <- "Drug Possession"
+
+mask <- update_charge("COCAINE")
+DF_charges$I[mask] <- "Drug Possession"
+
+mask <- update_charge("DANGEROUS DRUG")
+DF_charges$I[mask] <- "Drug Possession"
+
+# Open Container
+mask <- update_charge("OPEN CON")
+DF_charges$J[mask] <- "Open Container"
+
+mask <- update_charge("OPEN ALCOH")
+DF_charges$J[mask] <- "Open Container"
+
+mask <- update_charge("POSS.* ALCOHOL")
+DF_charges$J[mask] <- "Open Container"
+
+# Reckless
+mask <- update_charge("RECK")
+DF_charges$K[mask] <- "Reckless"
+
+mask <- update_charge("CARELESS")
+DF_charges$K[mask] <- "Reckless"
+
+# Stationary Object
+mask <- update_charge("STATIONA")
+DF_charges$L[mask] <- "Stationary Object"
+
+mask <- update_charge("FIXED")
+DF_charges$L[mask] <- "Stationary Object"
+
+# Fail to Control
+mask <- update_charge("FAILE?D? TO CONTROL$")
+DF_charges$M[mask] <- "Fail to Control"
+
+mask <- update_charge("FAILURE TO CONTROL$")
+DF_charges$M[mask] <- "Fail to Control"
+
+mask <- update_charge("CONTROL MOTOR")
+DF_charges$M[mask] <- "Fail to Control"
+
+# Fail to Stop properly
+mask <- update_charge("STOP A?T? ?DESIG")
+DF_charges$N[mask] <- "Improper Stop"
+
+mask <- update_charge("STOP A?T? ?PROPER")
+DF_charges$N[mask] <- "Improper Stop"
+
+# Blocking Traffic
+mask <- update_charge("BLOCK")
+DF_charges$O[mask] <- "Blocking Traffic"
+
+mask <- update_charge("PARK[EI][DN]G? [OI]N ROADWAY")
+DF_charges$O[mask] <- "Blocking Traffic"
+
+mask <- update_charge("PARK[EI][DN]G? IN A? ?TRAFFIC")
+DF_charges$O[mask] <- "Blocking Traffic"
+
+mask <- update_charge("PARK[EI][DN]G? IN A? ?MOVING")
+DF_charges$O[mask] <- "Blocking Traffic"
+
+mask <- update_charge("STOPP?E?D? IN A? ?MOVING")
+DF_charges$O[mask] <- "Blocking Traffic"
+
+# Misc Criminal charge
+mask <- update_charge("CRIMINAL")
+DF_charges$P[mask] <- "Misc Criminal"
+
+mask <- update_charge("ASSAULT")
+DF_charges$P[mask] <- "Misc Criminal"
+
+mask <- update_charge("THEFT")
+DF_charges$P[mask] <- "Misc Criminal"
+
+mask <- update_charge("ROBBERY")
+DF_charges$P[mask] <- "Misc Criminal"
+
+mask <- update_charge("RESISTING ARREST")
+DF_charges$P[mask] <- "Misc Criminal"
+
+mask <- update_charge("MANSLAUGHTER")
+DF_charges$P[mask] <- "Misc Criminal"
+
+mask <- update_charge("MURDER")
+DF_charges$P[mask] <- "Misc Criminal"
+
+mask <- update_charge("WEAPON")
+DF_charges$P[mask] <- "Misc Criminal"
+
+mask <- update_charge("FIREARM")
+DF_charges$P[mask] <- "Misc Criminal"
+
+mask <- update_charge("UCW")
+DF_charges$P[mask] <- "Misc Criminal"
+
+mask <- update_charge("WARRANT")
+DF_charges$P[mask] <- "Misc Criminal"
+
+# Safety Zone
+mask <- update_charge("SAFETY ZONE")
+DF_charges$Q[mask] <- "Safety Zone"
+
+# Parked Facing Traffic
+mask <- update_charge("FACING")
+DF_charges$R[mask] <- "Park Facing Traf"
+
+# Failure to Report
+mask <- update_charge("REPORT ACC")
+DF_charges$S[mask] <- "Failure to Report"
+
+mask <- update_charge("COMPLY")
+DF_charges$S[mask] <- "Failure to Report"
+
+mask <- update_charge("NOTIFY OWNER")
+DF_charges$S[mask] <- "Failure to Report"
+
+mask <- update_charge("DUTY U?P?ON")
+DF_charges$S[mask] <- "Failure to Report"
+
+# Racing
+mask <- update_charge("RACING")
+DF_charges$T[mask] <- "Racing"
+
+# No Adult
+mask <- update_charge("CODE B")
+DF_charges$U[mask] <- "No Adult"
+
+mask <- update_charge("RESTRICTION B")
+DF_charges$U[mask] <- "No Adult"
+
+mask <- update_charge("LOFS 21")
+DF_charges$U[mask] <- "No Adult"
+
+# Pedestrian error
+mask <- update_charge("PEDESTRIAN ENTER")
+DF_charges$V[mask] <- "Pedestrian Error"
+
+mask <- update_charge("PEDESTRIAN CROSSED")
+DF_charges$V[mask] <- "Pedestrian Error"
+
+mask <- update_charge("PEDESTRIAN IN ROAD")
+DF_charges$V[mask] <- "Pedestrian Error"
+
+mask <- update_charge("JAY")
+DF_charges$V[mask] <- "Pedestrian Error"
+
+# Pedestrian error
+mask <- update_charge("WITHOUT H?E?A?D? ?LIGHTS")
+DF_charges$W[mask] <- "Lights Off"
+
+mask <- update_charge("W/O H?E?A?D? ?LIGHTS")
+DF_charges$W[mask] <- "Lights Off"
+
+mask <- update_charge("NO H?E?A?D? ?LIGHTS")
+DF_charges$W[mask] <- "Lights Off"
+
+# Toll Violation
+mask <- update_charge(" TOLL")
+DF_charges$X[mask] <- "Toll Violation"
+
+# Obey Officer
+mask <- update_charge("OFFICER")
+DF_charges$Y[mask] <- "Obey Officer"
+
+mask <- update_charge("SCHOOL CROSS")
+DF_charges$Y[mask] <- "Obey Officer"
 
 
 
@@ -414,8 +947,24 @@ DF_charges$n[mask] <- "Unsafe Backing"
 
 DF_Charges_temp <- 
   DF_charges %>% 
-  tidyr::unite("Simple_Charge", a:n, na.rm = TRUE, remove = FALSE)
+  tidyr::unite("Simple_Charge", a:Y, na.rm = TRUE, remove = FALSE, sep=", ")
 
+#   Look at what is not categorized
+ChargesTemp <- DF_Charges_temp[DF_Charges_temp$Simple_Charge=="",] %>% group_by(Charge) %>% tally() %>% arrange(-n)
+
+
+#   And when done, save the final
+
+foo <- 
+  DF_charges %>% 
+  tidyr::unite("Simple_Charge", a:Y, na.rm = TRUE, remove = FALSE, sep=", ") %>% 
+  select(-a:-Y)
+
+DF_charges <- foo
+
+DF_charges$Simple_Charge <- str_replace(DF_charges$Simple_Charge,"^, ", "")
+DF_charges$Simple_Charge <- str_replace(DF_charges$Simple_Charge,"^ $", "")
+DF_charges$Simple_Charge <- str_replace(DF_charges$Simple_Charge,"^$", "UNK")
 
 ```
 
@@ -427,8 +976,8 @@ DF_Charges_temp <-
 
 DF_charges <- DF_charges %>% 
   group_by(Crash_ID) %>% 
-  arrange(Charge_Cat_ID) %>% 
-  summarise(Charges = paste(Charge_Cat_ID, collapse=", "))
+  arrange(Simple_Charge) %>% 
+  summarise(Charges = paste(Simple_Charge, collapse=", "))
 
 # combine the two
 
@@ -475,21 +1024,6 @@ range(df$Crash_Date)
 range(df$Crash_Time)
 
 ```
-
-
-```{r Look at Charges}
-
-sort(unique(df$Charges))
-
-df$Charges <- str_replace_all(df$Charges, "NA, ", "")
-df$Charges <- str_replace(df$Charges, ", NA", "")
-df$Charges <- str_replace(df$Charges, "NA", "")
-
-df %>% group_by(Charges) %>% 
-  tally()
-
-```
-
 
 
 ```{r Look at Crash_Time}
@@ -561,6 +1095,7 @@ df$Street_Nbr <- str_replace(df$Street_Nbr, "\\D+","")
 sort(unique(df$Tot_Injry_Cnt))
 
 ```
+
 ```{r Look at Death_Cnt}
 
 sort(unique(df$Death_Cnt))
@@ -622,7 +1157,7 @@ sort(unique((df$Street_Name)))
 
 ```{r save dataset}
 
-saveRDS(df, "~/Dropbox/Rprojects/Collisions/Collisions_2010_2017.RDS")
+saveRDS(df, "~/Dropbox/Rprojects/Collisions/Collisions_2010_2018.RDS")
 
 ```
 
